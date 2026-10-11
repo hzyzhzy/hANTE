@@ -39,6 +39,22 @@ public class ClientConfig {
     public static boolean enableTrainSound = true;
     public static boolean enableSmoke = true;
     public static boolean enableRolling = true;
+    /** 列车视角惯性（弹簧-阻尼）：列车加减速/过弯时相机滞后晃动，类似真人头部。 */
+    public static boolean enableCameraInertia = true;
+    /** 惯性强度：稳态偏移 ≈ 加速度 × 本值 / 弹簧刚度。越大晃得越远。 */
+    public static float cameraInertiaStrength = 0.2f;
+    /** 弹簧刚度：越大回正越快、越"硬"（同时会压缩稳态偏移）。 */
+    // 保持 70（用户确定不再改刚度）。CameraInertia 里的横向/纵向增益是按这个值配的 ——
+    // 两者是倒数关系（稳态偏移 ∝ 增益 / 刚度），改这里就必须同步改那两个增益。
+    public static float cameraInertiaStiffness = 70.0f;
+    /** 阻尼：每秒速度保留比例。越大余晃越久，越小越快停住。 */
+    public static float cameraInertiaDamping = 0.2f;
+    /**
+     * 阴影贴图 pass 中跳过 ANTE 自己的轨道渲染与几何提交（GlStateTracker/drawRails/drawScheduler）。
+     * RenderTrains.render 每帧会被主 pass 与 Iris 阴影 pass 各调用一次，这段开销大且在阴影 pass 里
+     * 没有意义（阴影贴图只需 MTR 的列车几何）。**不影响 MTR 列车自身的渲染**，所以列车影子仍在。
+     */
+    public static boolean skipAnteRailRenderInShadowPass = true;
     public static int railDistanceRendererInterval = 5;
     public static int railDistanceRendererMaxDistanceSqr = 16 * 16;
 
@@ -71,6 +87,11 @@ public class ClientConfig {
             enableSmoke = getOrDefault(configObject, "enableSmoke", JsonElement::getAsBoolean, true);
             hideRidingTrain = getOrDefault(configObject, "hideRidingTrain", JsonElement::getAsBoolean, false);
             enableRolling = getOrDefault(configObject, "enableRolling", JsonElement::getAsBoolean, true);
+            enableCameraInertia = getOrDefault(configObject, "enableCameraInertia", JsonElement::getAsBoolean, true);
+            cameraInertiaStrength = getOrDefault(configObject, "cameraInertiaStrength", JsonElement::getAsFloat, 0.2f);
+            cameraInertiaStiffness = getOrDefault(configObject, "cameraInertiaStiffness", JsonElement::getAsFloat, 70.0f);
+            cameraInertiaDamping = getOrDefault(configObject, "cameraInertiaDamping", JsonElement::getAsFloat, 0.2f);
+            skipAnteRailRenderInShadowPass = getOrDefault(configObject, "skipAnteRailRenderInShadowPass", JsonElement::getAsBoolean, true);
             useEditBoxSetRailRolling = getOrDefault(configObject, "useEditBoxSetRailRolling", JsonElement::getAsBoolean, true);
             railDistanceRendererInterval = getOrDefault(configObject, "railDistanceRendererInterval", JsonElement::getAsInt, 5);
             railDistanceRendererMaxDistanceSqr = getOrDefault(configObject, "railDistanceRendererMaxDistanceSqr", JsonElement::getAsInt, 16 * 16);
@@ -143,6 +164,11 @@ public class ClientConfig {
             configObject.addProperty("railDistanceRendererInterval", railDistanceRendererInterval);
             configObject.addProperty("railDistanceRendererMaxDistanceSqr", railDistanceRendererMaxDistanceSqr);
             configObject.addProperty("enableRolling", enableRolling);
+            configObject.addProperty("enableCameraInertia", enableCameraInertia);
+            configObject.addProperty("cameraInertiaStrength", cameraInertiaStrength);
+            configObject.addProperty("cameraInertiaStiffness", cameraInertiaStiffness);
+            configObject.addProperty("cameraInertiaDamping", cameraInertiaDamping);
+            configObject.addProperty("skipAnteRailRenderInShadowPass", skipAnteRailRenderInShadowPass);
             eyecandyScreenGroup.save(configObject);
             directNodeScreenGroup.save(configObject);
             rollAnglesListEntryGroup.save(configObject);

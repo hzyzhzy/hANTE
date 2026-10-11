@@ -52,7 +52,7 @@ configure(subprojects.findAll {it.name != 'rhino'}) {
 
 task setupLibrary() {
 
-	String url = "https://aphrodite281.github.io/Minecraft-Transit-Railway/lib/" + minecraft_version + "/"
+	String url = "https://aphrodite281.github.io/Minecraft-Transit-Railway-3.x.x/lib/" + minecraft_version + "/"
 
 	doFirst {
 		download {

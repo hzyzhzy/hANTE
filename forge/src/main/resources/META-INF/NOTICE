@@ -1,0 +1,27 @@
+MTR-ANTE (MTRSteamLoco) - MODIFIED BUILD
+========================================
+
+This is an UNOFFICIAL modified build of ANTE (Aphrodite's Nemo's Transit Expansion),
+based on upstream MTR-ANTE 1.1.0.
+
+  Upstream:        https://github.com/aphrodite281/mtr-ante
+  Upstream authors: Zbx1425, Aphrodite281
+  License:         MIT - full text in META-INF/LICENSE
+                   Copyright (c) 2022-present Zbx1425
+
+Modifications contained in this build (not present upstream):
+
+  * Camera roll - the view rolls together with the car body's cant, pivoting on the
+    rail plane instead of the camera position, so the car interior does not block it.
+  * Camera inertia - a spring-damper offset on the camera position, driven by the
+    riding car's acceleration, with substep integration for frame-rate independence.
+  * Interpolation fix - aligns MTR's per-render-frame position sync with Minecraft's
+    partial-tick interpolation, removing the stuttering of the scenery while moving.
+  * Compatibility fixes for running alongside YMTR.
+
+These modifications are distributed under the same MIT license. The copyright notice
+and permission notice above apply to the whole work, modified parts included.
+
+This build is NOT affiliated with, endorsed by, or supported by the upstream authors
+or by the authors of any other mod it is used with. It is provided "as is", without
+warranty of any kind.

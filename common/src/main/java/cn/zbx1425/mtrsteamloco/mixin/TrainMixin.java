@@ -85,12 +85,28 @@ public abstract class TrainMixin implements TrainExtraSupplier{
 	@Shadow(remap = false)
     public abstract int getIndex(double tempRailProgress, boolean roundDown);
 
+	/**
+	 * 轨道滚转角查询。
+	 *
+	 * 参数 value 的单位是**沿整条线路的里程（米）**，不是车厢序号 ——
+	 * 车厢序号到里程的换算在 TrainExtraSupplier.getRollAngleAt(Train, int) 静态方法里完成。
+	 *
+	 * 诊断：这里打印 mapSize，用来区分「轨道本来就没设滚转角（mapSize=0）」与
+	 * 「设了但取值落到 0 区间」。mapSize=0 时 RailExtraSupplier.getRollAngle 必定返回 0。
+	 */
 	@Override
 	public float getRollAngleAt(double value) {
+		final double rawProgress = value;
 		int i = getIndex(value, true);
 		if (i != 0) value -= distances.get(i - 1);
         Rail r = path.get(i).rail;
         float rot = RailExtraSupplier.getRollAngle(r, value);
+		if (cn.zbx1425.mtrsteamloco.data.Rolling.tickRollDiag()) {
+			cn.zbx1425.mtrsteamloco.Main.LOGGER.info(String.format(
+					"[ANTE-Roll] progress=%.2f -> i=%d/%d local=%.2f railLen=%.2f mapSize=%d roll=%.3f",
+					rawProgress, i, path.size(), value, r.getLength(),
+					((RailExtraSupplier) r).getRollAngleMap().size(), rot));
+		}
 		return rot;
 	}
 

@@ -132,6 +132,31 @@ public final class ConfigScreen {
                         ClientConfig.enableRolling
                 ).setSaveConsumer(checked -> ClientConfig.enableRolling = checked).setDefaultValue(true).build()
         );
+        // ---- 列车视角惯性（弹簧-阻尼）----
+        common.addEntry(entryBuilder
+                .startBooleanToggle(
+                        Text.translatable("gui.mtrsteamloco.config.client.camera_inertia"),
+                        ClientConfig.enableCameraInertia
+                ).setSaveConsumer(checked -> ClientConfig.enableCameraInertia = checked).setDefaultValue(true).build()
+        );
+        common.addEntry(entryBuilder
+                .startIntSlider(
+                        Text.translatable("gui.mtrsteamloco.config.client.camera_inertia_strength"),
+                        Math.round(ClientConfig.cameraInertiaStrength * 10.0f), 0, 50
+                ).setSaveConsumer(value -> ClientConfig.cameraInertiaStrength = value / 10.0f).setDefaultValue(2).build()
+        );
+        common.addEntry(entryBuilder
+                .startIntSlider(
+                        Text.translatable("gui.mtrsteamloco.config.client.camera_inertia_stiffness"),
+                        Math.round(ClientConfig.cameraInertiaStiffness), 5, 100
+                ).setSaveConsumer(value -> ClientConfig.cameraInertiaStiffness = value).setDefaultValue(70).build()
+        );
+        common.addEntry(entryBuilder
+                .startIntSlider(
+                        Text.translatable("gui.mtrsteamloco.config.client.camera_inertia_damping"),
+                        Math.round(ClientConfig.cameraInertiaDamping * 100.0f), 5, 95
+                ).setSaveConsumer(value -> ClientConfig.cameraInertiaDamping = value / 100.0f).setDefaultValue(20).build()
+        );
         common.addEntry(entryBuilder
                 .startIntField(
                         Text.translatable("gui.mtrsteamloco.config.client.rail_distance_renderer_interval"),

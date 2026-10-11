@@ -1,274 +1,136 @@
 package cn.zbx1425.mtrsteamloco.mixin;
 
-import cn.zbx1425.sowcer.math.Matrix4f;
-import net.minecraft.world.phys.Vec3;
-import cn.zbx1425.mtrsteamloco.data.VehicleRidingClientExtraSupplier;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.Minecraft;
-import net.minecraft.util.Mth;
-import mtr.data.*;
-import mtr.data.*;
-import mtr.client.*;
-import mtr.*;
-import mtr.packet.PacketTrainDataGuiClient;
-import net.minecraft.core.BlockPos;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.Pose;
-import net.minecraft.client.Camera;
-import mtr.mappings.Utilities;
-import net.minecraft.world.entity.player.Player;
-import mtr.entity.EntitySeat;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.Vec3;
-import com.mojang.blaze3d.vertex.PoseStack;
-import mtr.render.RenderTrains;
-import cn.zbx1425.sowcer.math.PoseStackUtil;
-import net.minecraft.client.renderer.entity.EntityRenderer;
-import cn.zbx1425.sowcer.math.Matrix4f;
-import cn.zbx1425.sowcer.math.Vector3f;
+import cn.zbx1425.mtrsteamloco.ClientConfig;
 import cn.zbx1425.mtrsteamloco.data.Rolling;
 import cn.zbx1425.mtrsteamloco.data.Rolling.Rotation;
+import cn.zbx1425.mtrsteamloco.data.VehicleRidingClientExtraSupplier;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec3;
+import mtr.data.VehicleRidingClient;
 
-import java.util.*;
+import java.util.Map;
+import java.util.UUID;
 
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import org.spongepowered.asm.mixin.Shadow;
 
+/**
+ * 相机滚转的姿态数据来源。
+ *
+ * ★ 设计原则（重要）：**不替换 MTR 的任何方法**。
+ *
+ * 上游原本的做法是在 setOffsets / renderPlayerAndGetOffset 的 HEAD 处 cancel 掉 MTR 的实现，
+ * 用自己的一套重算玩家座位位置、遍历乘客、重渲染玩家模型。这两个方法都位于列车渲染热路径上
+ * （RenderTrains.render → simulateTrain → simulateCar），实测把渲染线程吃掉 80%+，
+ * 是"不开光影也只有 20 帧"的直接原因。而且经 spark 归因，这部分开销会被记在 mtr 名下，
+ * 看起来像 MTR 自己的问题，极具误导性。
+ *
+ * 现在改为：让 MTR 的 setOffsets 完整跑完（保留其全部优化与副作用），
+ * 我们只在 TAIL 处**读取**这一帧的车厢姿态（位置/朝向/俯仰/滚转），
+ * 交给 Rolling 供 CameraMixin 给相机用。MTR 的内部状态一概不碰。
+ *
+ * 代价：玩家实体位置不再叠加滚转偏移（原上游实现会移）。但相机滚转本身完全保留，
+ * 而这也是我们真正想要的效果。
+ */
 @Mixin(VehicleRidingClient.class)
 public abstract class VehicleRidingClientMixin implements VehicleRidingClientExtraSupplier {
 
+    /** 每节车厢的滚转角，由 TrainClientMixin 每帧填充。 */
     private float[] roll = new float[0];
-	private Vec3[] positions;
-	private boolean reversed;
+    /** 首次 setRoll 时打一行日志，用于确认滚转角数组是否真的送到了。 */
+    private boolean rollLogged = false;
+    /** 车厢位置数组，由 TrainClientMixin 每帧填充。 */
+    private Vec3[] positions;
+    /** 列车是否反向，由 TrainClientMixin 每帧填充。 */
+    private boolean reversed;
 
     @Override
     public float getRoll(int index) {
-        if (index >= roll.length || index < 0) return 0; 
+        if (index >= roll.length || index < 0) return 0;
         return roll[index];
     }
 
     @Override
     public void setRoll(float[] roll) {
-		this.roll = roll;
+        if (!rollLogged) {
+            rollLogged = true;
+            final StringBuilder sb = new StringBuilder();
+            for (float v : roll) sb.append(String.format("%.2f ", v));
+            cn.zbx1425.mtrsteamloco.Main.LOGGER.info(
+                    "[ANTE-Roll] setRoll 已调用，共 " + roll.length + " 节车厢的滚转角: [" + sb.toString().trim() + "]");
+        }
+        this.roll = roll;
     }
 
-	@Override
-	public void setPositions(Vec3[] positions) {
-		this.positions = positions;
-	}
+    @Override
+    public void setPositions(Vec3[] positions) {
+        this.positions = positions;
+    }
 
-	@Override
-	public void setReversed(boolean reversed) {
-		this.reversed = reversed;
-	}
+    @Override
+    public void setReversed(boolean reversed) {
+        this.reversed = reversed;
+    }
 
+    /** 只读取，不修改。 */
+    @Shadow(remap = false) private Map<UUID, Float> percentagesZ;
 
-	@Shadow(remap = false) private float clientPrevYaw;
-	@Shadow(remap = false) private float oldPercentageX;
-	@Shadow(remap = false) private float oldPercentageZ;
-	@Shadow(remap = false) private double lastSentX;
-	@Shadow(remap = false) private double lastSentY;
-	@Shadow(remap = false) private double lastSentZ;
-	@Shadow(remap = false) private float lastSentTicks;
-	@Shadow(remap = false) private int interval;
-	@Shadow(remap = false) private int previousInterval;
+    /**
+     * 只读注入：MTR 的 setOffsets 已经跑完，这里仅把本地玩家所处车厢的姿态记录下来。
+     * 不 cancel、不改参数、不碰字段，因此不会影响 MTR 的任何行为。
+     */
+    @Inject(method = "setOffsets", at = @At("TAIL"), remap = false)
+    public void voxy$captureRotationForCamera(
+            UUID uuid, double x, double y, double z, float yaw, float pitch,
+            double length, int width, boolean doorLeftOpen, boolean doorRightOpen,
+            boolean hasPitchAscending, boolean hasPitchDescending,
+            float riderOffset, float riderOffsetDismounting,
+            boolean shouldSetOffset, boolean shouldSetYaw,
+            Runnable clientPlayerCallback, CallbackInfo ci) {
 
-	@Shadow(remap = false) private List<Double> offset;
-	@Shadow(remap = false) private Map<UUID, Float> percentagesX;
-	@Shadow(remap = false) private Map<UUID, Float> percentagesZ;
-	@Shadow(remap = false) private Map<UUID, Float> newPercentagesX;
-	@Shadow(remap = false) private Map<UUID, Float> newPercentagesZ;
-	@Shadow(remap = false) private Map<UUID, Vec3> riderPositions;
-	@Shadow(remap = false) private Set<UUID> ridingEntities;
-	@Shadow(remap = false) private ResourceLocation packetId;
+        // ★ 修正玩家实体的插值基准 —— **必须在下面的滚转开关判断之前**，它与滚转无关。
+        //
+        // MTR 移动玩家的方式是：每渲染帧直接 setPos 到它算好的插值位置，同时把 xo/yo/zo
+        // 设为**上一渲染帧**的位置。而原版渲染相机时还会再做一次
+        // `lerp(partialTick, xo, x)`，其中 partialTick 是**游戏 tick 内**的插值系数
+        // （tick 内固定、跨 tick 重置）。两者语义错位 —— 相机位置于是被 partialTick 调制，
+        // 每帧推进量不相等，表现就是「行驶时旁边景物完全不是匀速后退，而是一抽一抽」。
+        //
+        // 既然 MTR 给的 x/y/z 本身就是渲染帧级的插值结果，把 xo/yo/zo 对齐到它，
+        // 原版那次多余的插值就退化成恒等变换，位置恢复逐帧均匀。
+        final LocalPlayer fixPlayer = Minecraft.getInstance().player;
+        if (fixPlayer != null) {
+            fixPlayer.xo = fixPlayer.getX();
+            fixPlayer.yo = fixPlayer.getY();
+            fixPlayer.zo = fixPlayer.getZ();
+        }
 
-	@Shadow(remap = false)
-	private Vec3 getViewOffset() {
-		throw new AssertionError();
-	}
+        if (!ClientConfig.enableRolling) return;
+        if (positions == null || positions.length < 2) return;
+        if (percentagesZ == null) return;
 
-	@Unique
-	private Rotation prevRotation = Rotation.IDENTITY;
+        final LocalPlayer clientPlayer = Minecraft.getInstance().player;
+        if (clientPlayer == null) return;
+        if (!uuid.equals(clientPlayer.getUUID())) return;
 
-	@Inject(method = "renderPlayerAndGetOffset", remap = false, at = @At("HEAD"), cancellable = true)
-	private void onRenderPlayerAndGetOffset(CallbackInfoReturnable<Vec3> cir) {
-		final boolean noOffset = offset.isEmpty();
-		final LocalPlayer clientPlayer = Minecraft.getInstance().player;
+        final Float pctZ = percentagesZ.get(uuid);
+        if (pctZ == null) return;
 
-		riderPositions.forEach((uuid, position) -> {
-			if (clientPlayer != null) {
-				if (uuid.equals(clientPlayer.getUUID())) {
-					Rolling.setRotation(prevRotation);
-				}
-			}
-			
-			if (noOffset) {
-				renderRidingPlayer(getViewOffset(), uuid, position);
-			} else {
-				renderRidingPlayer(getViewOffset(), uuid, position.subtract(offset.get(0), offset.get(1), offset.get(2)));
-			}
-		});
+        final int ridingCar = Mth.clamp((int) Math.floor(pctZ), 0, positions.length - 2);
 
-		if (noOffset) {
-			cir.setReturnValue(Vec3.ZERO);
-		} else {
-			cir.setReturnValue(new Vec3(offset.get(0), offset.get(1), offset.get(2)));
-		}
-		cir.cancel();
-	}
+        // 与 MTR 一致：只有列车在该方向具有爬坡能力时才应用俯仰
+        final float effectivePitch = (pitch < 0 ? hasPitchAscending : hasPitchDescending) ? pitch : 0.0f;
 
-	@Unique
-	private Map<UUID, Float> prevYaw = new HashMap<>();
-	private Map<UUID, Float> prevPitch = new HashMap<>();
-
-	private static double getValueFromPercentage(double percentage, double total) {
-		return (percentage - 0.5) * total;
-	}
-
-	@Inject(method = "setOffsets", at = @At("HEAD"), remap = false, cancellable = true)
-	public void setOffsets(UUID uuid, double x, double y, double z, float yaw, float pitch, double length, int width, boolean doorLeftOpen, boolean doorRightOpen, boolean hasPitchAscending, boolean hasPitchDescending, float riderOffset, float riderOffsetDismounting, boolean shouldSetOffset, boolean shouldSetYaw, Runnable clientPlayerCallback, CallbackInfo ci) {
-		prevYaw.put(uuid, yaw);
-		prevPitch.put(uuid, pitch);
-
-		final LocalPlayer clientPlayer = Minecraft.getInstance().player;
-		if (clientPlayer == null) {
-			return;
-		}
-
-		final boolean isClientPlayer = uuid.equals(clientPlayer.getUUID());
-		final double percentageX = getValueFromPercentage(percentagesX.get(uuid), width);
-		final float riderOffsetNew = doorLeftOpen && percentageX < 0 || doorRightOpen && percentageX > 1 ? riderOffsetDismounting : riderOffset;
-		int currentRidingCar = Mth.clamp((int) Math.floor(percentagesZ.get(uuid)), 0, positions.length - 2);
-		Matrix4f mat = new Matrix4f();
-		mat.rotateX((pitch < 0 ? hasPitchAscending : hasPitchDescending) ? (float) pitch : 0);
-		mat.rotateY(yaw);//(reversed ? (float)Math.PI : 0)
-		mat.translate(0, -1, 0);
-		mat.rotateZ((reversed ? 1 : -1) * getRoll(currentRidingCar));
-		mat.translate(0, 1, 0);
-		mat.translate((float) percentageX, riderOffsetNew, (float) getValueFromPercentage(Mth.frac(percentagesZ.get(uuid)), length));
-		Vector3f vect = mat.getTranslationPart();
-		final Vec3 playerOffset = new Vec3(vect.x(), vect.y(), vect.z());
-		ClientData.updatePlayerRidingOffset(uuid);
-		riderPositions.put(uuid, playerOffset.add(x, y, z));
-
-		if (isClientPlayer) {
-			prevRotation = new Rotation(x, y, z, yaw, (pitch < 0 ? hasPitchAscending : hasPitchDescending) ? (float) pitch : 0, getRoll(currentRidingCar), reversed);
-
-			final double moveX = x + playerOffset.x;
-			final double moveY = y + playerOffset.y;
-			final double moveZ = z + playerOffset.z;
-			final boolean movePlayer;
-
-			if (MTRClient.isVivecraft()) {
-				final Entity vehicle = clientPlayer.getVehicle();
-				if (vehicle instanceof EntitySeat) {
-					((EntitySeat) vehicle).setPosByTrain(moveX, moveY, moveZ);
-					movePlayer = false;
-				} else {
-					movePlayer = true;
-				}
-
-				final float tempPercentageX = percentagesX.get(uuid);
-				final boolean doorOpen = doorLeftOpen && tempPercentageX < 0 || doorRightOpen && tempPercentageX > 1;
-				final boolean movedFar = Math.abs(lastSentX - moveX) > 2 || Math.abs(lastSentY - moveY) > 2 || Math.abs(lastSentZ - moveZ) > 2;
-
-				if (doorOpen || MTRClient.getGameTick() - lastSentTicks > 60 && movedFar) {
-					PacketTrainDataGuiClient.sendUpdateEntitySeatPassengerPosition(moveX, moveY, moveZ);
-					lastSentX = moveX;
-					lastSentY = moveY;
-					lastSentZ = moveZ;
-					lastSentTicks = MTRClient.getGameTick();
-				}
-			} else {
-				movePlayer = true;
-			}
-
-			if (movePlayer) {
-				clientPlayer.fallDistance = 0;
-				clientPlayer.setDeltaMovement(0, 0, 0);
-				clientPlayer.setSpeed(0);
-				if (MTRClient.getGameTick() > 40) {
-					clientPlayer.absMoveTo(moveX, moveY, moveZ);
-				}
-			}
-
-			clientPlayerCallback.run();
-
-			if (shouldSetOffset) {
-				if (shouldSetYaw) {
-					float angleDifference = (float) Math.toDegrees(clientPrevYaw - yaw);
-					if (angleDifference > 180) {
-						angleDifference -= 360;
-					} else if (angleDifference < -180) {
-						angleDifference += 360;
-					}
-					Utilities.incrementYaw(clientPlayer, angleDifference);
-				}
-				offset.add(x);
-				offset.add(y);
-				offset.add(z);
-				if (MTRClient.isVivecraft()) {
-					offset.add(playerOffset.x);
-					offset.add(playerOffset.y);
-					offset.add(playerOffset.z);
-				} else {
-					float eyeHeight = clientPlayer.getEyeHeight();
-					Vec3 off;
-					if (Minecraft.getInstance().options.getCameraType().isFirstPerson()) {
-						mat.translate(0, eyeHeight, 0);
-						off = mat.getTranslationPart().toVec3();
-					} else {
-						off = playerOffset.add(0, eyeHeight, 0);
-					}
-					offset.add(off.x);
-					offset.add(off.y);
-					offset.add(off.z);
-				}
-			}
-
-			clientPrevYaw = yaw;
-		}
-		ci.cancel();
-	}
-
-	private void renderRidingPlayer(Vec3 viewOffset, UUID playerId, Vec3 playerPositionOffset) {
-		final BlockPos posAverage = TrainRendererBaseAccessor.invokeApplyAverageTransform(viewOffset, playerPositionOffset.x, playerPositionOffset.y, playerPositionOffset.z);
-		if (posAverage == null) {
-			return;
-		}
-		PoseStack matrices = TrainRendererBaseAccessor.getMatrices();
-		Camera camera = TrainRendererBaseAccessor.getCamera();
-		Level world = TrainRendererBaseAccessor.getWorld();
-		matrices.translate(0, RenderTrains.PLAYER_RENDER_OFFSET, 0);
-		
-		final Player renderPlayer = world.getPlayerByUUID(playerId);
-		if (renderPlayer != null && (!playerId.equals(TrainRendererBaseAccessor.getPlayer().getUUID()) || camera.isDetached())) {
-			EntityRenderer<? super Entity> entityrenderer = TrainRendererBaseAccessor.getEntityRenderDispatcher().getRenderer(renderPlayer);
-			Vec3 vec3 = entityrenderer.getRenderOffset(renderPlayer, 1);
-			vec3 = vec3.add(playerPositionOffset);
-			matrices.pushPose();
-			matrices.translate(vec3.x, vec3.y, vec3.z);
-			Float yaw = prevYaw.get(playerId);
-			Float pitch = prevPitch.get(playerId);
-			if (yaw != null && pitch != null) {
-				int currentRidingCar = Mth.clamp((int) Math.floor(percentagesZ.get(playerId)), 0, positions.length - 2);
-				PoseStackUtil.rotX(matrices, pitch);
-				PoseStackUtil.rotY(matrices, yaw);
-				PoseStackUtil.rotZ(matrices, (reversed? 1 : -1) * getRoll(currentRidingCar));
-				PoseStackUtil.rotY(matrices, -yaw);
-				PoseStackUtil.rotX(matrices, -pitch);
-			}
-			matrices.translate(-vec3.x, -vec3.y, -vec3.z);
-			matrices.translate(playerPositionOffset.x, playerPositionOffset.y, playerPositionOffset.z);
-			TrainRendererBaseAccessor.getEntityRenderDispatcher().render(renderPlayer, 0, 0, 0, 0, 1, matrices, TrainRendererBaseAccessor.getVertexConsumers(), 0xF000F0);
-			matrices.popPose();
-		}
-		matrices.popPose();
-	}
+        Rolling.setRotation(new Rotation(
+                x, y, z,
+                yaw,
+                effectivePitch,
+                getRoll(ridingCar),
+                reversed));
+    }
 }

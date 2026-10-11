@@ -317,13 +317,13 @@ public class RailCalculator {
     public static Group calculate(double startX, double startZ, double endX, double endZ, double startAngle, double endAngle) {
         Group group = _calculate(startX, startZ, endX, endZ, startAngle, endAngle);
 
-        if (group == null) return Group.EMPTY;
-        if (group.first.isValid() && group.second.isValid()) {
-            // pl(group.first.getLength() + " " + group.second.getLength());
-            return group;
-        }
-        // pl("无效的section");
-        return Group.EMPTY;
+        // ★ 移植上游 1.1.1 的修复（对应 changelog「修复了缆车节点在某些角度下无法连接的问题」）：
+        //   原逻辑用 Section.isValid() 过滤结果，而那个 isValid() 只检查各参数是否有限
+        //   （Double.isFinite），只要某一段解出 NaN 就把整组丢掉、返回空组 —— 于是那些角度下
+        //   轨道直接连不上。改为原样返回，把关交给 Rail.isValid() 的角度容差判定
+        //   （RailMixin 注入的 b2/b3 检查，容差 0.3°）。
+        //   调用方 RailMixin.onCreate 仍保留 group != null 判断，故此处无需再兜底。
+        return group;
     }
 
     public static Group segment(double startX, double startZ, double endX, double endZ) {

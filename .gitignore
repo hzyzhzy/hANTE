@@ -61,3 +61,8 @@ _Minecraft-Transit-Railway-3.x.x
 
 # Extracted changelog
 extracted_changelog.md
+
+# 本地备份（移植上游修复时留的原始文件）
+*.orig-alpha
+*.orig
+*.bak-*

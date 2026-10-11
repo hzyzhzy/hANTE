@@ -103,7 +103,66 @@ public abstract class TrainClientMixin extends Train implements IGui{
 	@Shadow(remap = false) abstract int getPreviousStoppingIndex(int headIndex);
 	@Shadow(remap = false) abstract boolean justOpening();
 
-	protected boolean handlePositions(Level world, Vec3[] positions, float ticksElapsed) {
+	/**
+	 * ★ 只补数据，**不替换** MTR 的方法。
+	 *
+	 * 上游在加滚转时把 handlePositions123 改名成了 handlePositions —— 名字一匹配就构成覆盖，
+	 * MTR 自己的 handlePositions 被整个替换掉。而该方法「每帧 × 每列车」都跑，
+	 * 覆盖会阻止 JIT 内联，这是掉帧的第二个元凶（第一个是 simulateTrain，已同样处理）。
+	 *
+	 * 现在改回：MTR 的 handlePositions 完整执行（其逻辑与上游覆盖版逐行一致，
+	 * 见 ymtr TrainClient.java:142-192），我们只在 HEAD 处把滚转角数组塞进
+	 * vehicleRidingClient，供 VehicleRidingClientMixin 在 setOffsets 的 TAIL 读取。
+	 * HEAD 一定早于 MTR 内部调用 setOffsets，所以时序是安全的。
+	 */
+	@Inject(method = "handlePositions", at = @At("HEAD"), remap = false)
+	private void anteHandlePositionsHead(Level world, Vec3[] positions, float ticksElapsed, CallbackInfoReturnable<Boolean> cir) {
+		// ★ 探针：确认这个注入点到底有没有被执行。
+		// 用字符串拼接而不是 String.format —— 排除「格式化异常导致日志语句整体抛错」这条路径。
+		if (cn.zbx1425.mtrsteamloco.data.Rolling.tickDiag("headEnter")) {
+			cn.zbx1425.mtrsteamloco.Main.LOGGER.info("[ANTE-Roll] HEAD 进入: enableRolling=" + ClientConfig.enableRolling
+					+ " vrc=" + (vehicleRidingClient != null)
+					+ " positions=" + (positions == null ? "null" : String.valueOf(positions.length))
+					+ " trainCars=" + trainCars);
+		}
+		if (!ClientConfig.enableRolling) return;
+		if (vehicleRidingClient == null || positions == null || positions.length < 2) return;
+
+		// ★ 与基座实现严格一致：**无条件对每一列车计算滚转角**。
+		//
+		//   早先这里加过一个优化过滤 —— 只对 isPlayerRiding(本地玩家) 为真的列车计算，
+		//   本意是省掉非乘坐列车的开销。结果是**相机滚转整个失效**（roll 恒为 0），
+		//   而基座（同一条数据链路、同样无条件计算）经实测滚转正常。
+		//   Train.isPlayerRiding 读的是 service 端同步字段 ridingEntities，在客户端
+		//   渲染路径的此时机并不可靠。功能正确性优先，回退成基座的无条件行为。
+		final float[] rolls = new float[trainCars];
+		for (int i = 0; i < trainCars; i++) {
+			rolls[i] = TrainExtraSupplier.getRollAngleAt((Train) (Object) this, i);
+		}
+
+		if (cn.zbx1425.mtrsteamloco.data.Rolling.tickDiag("headCalc")) {
+			final StringBuilder sb = new StringBuilder();
+			for (float v : rolls) sb.append(v).append(' ');
+			cn.zbx1425.mtrsteamloco.Main.LOGGER.info("[ANTE-Roll] HEAD 已计算: trainId=" + id
+					+ " trainCars=" + trainCars
+					+ " positionsLen=" + positions.length
+					+ " railProgress=" + railProgress
+					+ " spacing=" + spacing
+					+ " rolls=[" + sb.toString().trim() + "]");
+		}
+
+		final VehicleRidingClientExtraSupplier supplier = (VehicleRidingClientExtraSupplier) (Object) vehicleRidingClient;
+		supplier.setReversed(reversed);
+		supplier.setRoll(rolls);
+		supplier.setPositions(positions);
+	}
+
+	// 名字故意不匹配 MTR 的方法，保持为死代码（与 1.1.0 一致），仅作参考留存。
+	protected boolean handlePositions123(Level world, Vec3[] positions, float ticksElapsed) {
+		// ★ 探针：这行若出现，说明有人调用了这个「死代码」—— 那 setRoll 的真正来源就是这里。
+		if (cn.zbx1425.mtrsteamloco.data.Rolling.tickDiag("deadCode")) {
+			cn.zbx1425.mtrsteamloco.Main.LOGGER.info("[ANTE-Roll] ★★ handlePositions123 竟然被调用了 —— setRoll 来自这里！");
+		}
 		final Minecraft client = Minecraft.getInstance();
 		final LocalPlayer clientPlayer = client.player;
 		if (clientPlayer == null) {
@@ -286,53 +345,17 @@ public abstract class TrainClientMixin extends Train implements IGui{
 		}
     }
 
-	@Inject(method = "simulateTrain", at = @At("HEAD"), remap = false, cancellable = true)
-	private void simulateTrain(Level world, float ticksElapsed, SpeedCallback speedCallback, AnnouncementCallback announcementCallback, AnnouncementCallback lightRailAnnouncementCallback, CallbackInfo ci) {
-		trainTranslucentRenders.clear();
-		this.speedCallback = speedCallback;
-		this.announcementCallback = announcementCallback;
-		this.lightRailAnnouncementCallback = lightRailAnnouncementCallback;
-		oldSpeed = speed;
-		oldRailProgress = railProgress;
-		oldDoorValue = doorValue;
-		
-		if (ticksElapsed != 0) {
-			final int stopIndex = path.get(getIndex(0, spacing, false)).stopIndex - 1;
-			if (!RailwayData.useRoutesAndStationsFromIndex(stopIndex, routeIds, ClientData.DATA_CACHE, (currentStationIndex, thisRoute1, nextRoute1, thisStation1, nextStation1, lastStation1) -> {
-				this.currentStationIndex = currentStationIndex;
-				thisRoute = thisRoute1;
-				nextRoute = nextRoute1;
-				thisStation = thisStation1;
-				nextStation = nextStation1;
-				lastStation = lastStation1;
-			})) {
-				currentStationIndex = 0;
-				thisRoute = null;
-				nextRoute = null;
-				thisStation = null;
-				nextStation = null;
-				lastStation = null;
-			}
-		}
-
-		simulateTrain(world, ticksElapsed, null);
-
-		if (depot == null || routeIds.isEmpty()) {
-			final Siding siding = ClientData.DATA_CACHE.sidingIdMap.get(sidingId);
-			depot = siding == null ? null : ClientData.DATA_CACHE.sidingIdToDepot.get(siding.id);
-			routeIds = depot == null ? new ArrayList<>() : depot.routeIds;
-			if (depot != null) {
-				depot.lastDeployedMillis = System.currentTimeMillis();
-			}
-		}
-
-		final LocalPlayer player = Minecraft.getInstance().player;
-		if (isManualAllowed && Train.isHoldingKey(player) && isPlayerRiding(player)) {
-			RenderDrivingOverlay.setData(manualNotch, (TrainClient) (Object) this);
-		}
-		
-		ci.cancel();
-	}
+	// ★ 已移除：原本这里有一个
+	//     @Inject(method = "simulateTrain", at = @At("HEAD"), cancellable = true)
+	// 把 MTR 的 simulateTrain 整个替换掉（复制一遍逻辑再 ci.cancel()）。
+	//
+	// 移除原因：YMTR（Yomi 的 MTR 分叉）本体里的 TrainClient.simulateTrain 已经**完整包含**
+	// 同样的逻辑（trainTranslucentRenders.clear / callbacks / useRoutesAndStationsFromIndex /
+	// depot 回填 / RenderDrivingOverlay.setData），逐行一致。所以这个注入纯属重复实现，
+	// 而 simulateTrain 是「每帧 × 每列车」的热路径，mixin 注入会阻止 JIT 内联 —— 实测就是
+	// 掉帧的元凶（移除后帧率恢复，而列车行为完全不变，因为 MTR 本体照常执行）。
+	//
+	// 注意：这不影响滚转/惯性 —— 那些数据来自 handlePositions 与 VehicleRidingClientMixin。
 
     private static Vec3 now(Matrices matrices) {
         return matrices.last().getTranslationPart().toVec3();

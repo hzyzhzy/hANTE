@@ -8,7 +8,10 @@ pluginManagement {
 }
 
 include("common")
-include("fabric")
+// include("fabric")
+// 该子项目在配置阶段动态注册 maven 仓库（TerraformersMC），在 Gradle 8.11 + loom 1.9.424 下会触发
+// "Cannot mutate content repository descriptor ... after repository has been used"。
+// 本次只需要 Forge 产物，故移除该子项目。
 include("forge")
 
 include("rhino")

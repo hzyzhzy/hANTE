@@ -1,15 +1,17 @@
 package cn.zbx1425.mtrsteamloco.path;
 
+import cn.zbx1425.mtrsteamloco.util.ModExecutors;
 import mtr.path.PathData;
 import mtr.data.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 
 public class BetterPathFinder {
-
     private static final int MAX_AIRPLANE_TURN_ARC = 128;
 
     public static int findPath(List<PathData> path, Map<BlockPos, Map<BlockPos, Rail>> rails, List<SavedRailBase> savedRailBases, int stopIndexOffset, int cruisingAltitude, boolean useFastSpeed) {
@@ -19,6 +21,8 @@ public class BetterPathFinder {
             // pl("savedRailBases.size() < 2, returning 0");
             return 0;
         }
+
+        var tasks = (CompletableFuture<List<PathData>>[]) new CompletableFuture[savedRailBases.size() - 1];
 
         for (int i = 0; i < savedRailBases.size() - 1; i++) {
             // pl("Processing saved rail base pair " + i);
@@ -35,14 +39,24 @@ public class BetterPathFinder {
                 });
             }
 
-            final List<PathData> partialPath = findPath(rails, runways, savedRailBaseStart, savedRailBaseEnd, i + stopIndexOffset, cruisingAltitude, useFastSpeed);
-            if (partialPath.isEmpty()) {
-                // pl("Partial path is empty, clearing path and returning " + (i + 1));
-                path.clear();
-                return i + 1;
-            }
+            final int currentI = i;
+            tasks[i] = CompletableFuture.supplyAsync(() -> findPath(rails, runways, savedRailBaseStart, savedRailBaseEnd, currentI + stopIndexOffset, cruisingAltitude, useFastSpeed), ModExecutors.POOL);
+        }
 
-            appendPath(path, partialPath);
+        try {
+            for (var i = 0; i < savedRailBases.size() - 1; i++) {
+                List<PathData> partialPath = tasks[i].get();
+
+                if (partialPath.isEmpty()) {
+                    // pl("Partial path is empty, clearing path and returning " + (i + 1));
+                    path.clear();
+                    return i + 1;
+                }
+
+                appendPath(path, partialPath);
+            }
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
         }
 
         // pl("Successfully processed all saved rail bases, returning " + savedRailBases.size());
@@ -69,6 +83,8 @@ public class BetterPathFinder {
     }
 
     private static List<PathData> findPath(Map<BlockPos, Map<BlockPos, Rail>> rails, Set<BlockPos> runways, SavedRailBase savedRailBaseStart, SavedRailBase savedRailBaseEnd, int stopIndex, int cruisingAltitude, boolean useFastSpeed) {
+        List<List<PathData>> options = new ArrayList<>();
+
         // pl("Entering findPath (private)");
         final BlockPos savedRailBaseEndMidPos = savedRailBaseEnd.getMidPos();
         final Function<Map<BlockPos, Rail>, Comparator<BlockPos>> comparator = newConnections -> (pos1, pos2) -> {
@@ -77,6 +93,7 @@ public class BetterPathFinder {
             } else {
                 final Rail connection1 = newConnections.get(pos1);
                 final Rail connection2 = newConnections.get(pos2);
+
                 if (connection1 == null || connection2 == null || connection1.railType.speedLimit == connection2.railType.speedLimit) {
                     return pos1.distSqr(savedRailBaseEndMidPos) > pos2.distSqr(savedRailBaseEndMidPos) ? 1 : -1;
                 } else {
@@ -84,6 +101,8 @@ public class BetterPathFinder {
                 }
             }
         };
+
+        var visited = new HashMap<VisitedSegment, Integer>();
 
         for (int i = 0; i < 2; i++) {
             // pl("Starting iteration " + i + " of path finding loop");
@@ -97,9 +116,16 @@ public class BetterPathFinder {
             while (path.size() >= 2) {
                 // pl("While loop with path size " + path.size());
                 final PathPart lastPathPart = path.get(path.size() - 1);
+                final var segment = new VisitedSegment(path.get(path.size() - 2).pos, lastPathPart.pos);
+
+                if (visited.getOrDefault(segment, Integer.MAX_VALUE) <= path.size()) {
+                    path.remove(lastPathPart);
+                    continue;
+                }
 
                 if (lastPathPart.otherOptions.isEmpty()) {
                     // pl("Removing lastPathPart as otherOptions is empty");
+                    visited.put(segment, path.size());
                     path.remove(lastPathPart);
                 } else {
                     // pl("Processing otherOptions for lastPathPart");
@@ -121,7 +147,7 @@ public class BetterPathFinder {
                                 // pl("Rail is null, checking runways");
                                 if (runways.isEmpty()) {
                                     // pl("Runways is empty, returning empty list");
-                                    return new ArrayList<>();
+//                                    return new ArrayList<>();
                                 } else {
                                     // pl("Adding airplane dummy path");
                                     final int heightDifference1 = cruisingAltitude - pos1.getY();
@@ -155,11 +181,11 @@ public class BetterPathFinder {
                         final Rail rail = DataCache.tryGet(rails, newPos, endPos);
                         if (rail == null) {
                             // pl("End rail is null, returning empty list");
-                            return new ArrayList<>();
+//                            return new ArrayList<>();
                         } else {
                             // pl("Adding end rail with dwell time: " + savedRailBaseEnd.getDwellTime());
                             railPath.add(new PathData(rail, savedRailBaseEnd.id, savedRailBaseEnd instanceof Platform ? savedRailBaseEnd.getDwellTime() : 0, newPos, endPos, stopIndex + 1));
-                            return railPath;
+                            options.add(railPath);
                         }
                     }
                 }
@@ -167,7 +193,11 @@ public class BetterPathFinder {
         }
 
         // pl("No path found, returning empty list");
-        return new ArrayList<>();
+        return options.stream()
+                .min(Comparator.comparingDouble(path ->
+                    path.stream().reduce(0.0, (acc, data) -> acc + (data.rail.getLength() / data.rail.railType.maxBlocksPerTick), Double::sum)
+                ))
+                .orElseGet(ArrayList::new);
     }
 
     private static BlockPos addAirplanePath(RailAngle startAngle, BlockPos startPos, RailAngle expectedAngle, int turnArc, List<PathData> tempRailPath, RailType railType, int stopIndex, boolean reverse) {
@@ -207,7 +237,7 @@ public class BetterPathFinder {
 
     private static void addPathPart(Map<BlockPos, Map<BlockPos, Rail>> rails, Set<BlockPos> runways,
                                    BlockPos newPos, BlockPos lastPos, List<PathPart> path,
-                                   Set<BlockPos> turnBacks, Function<Map<BlockPos, Rail>, 
+                                   Set<BlockPos> turnBacks, Function<Map<BlockPos, Rail>,
                                    Comparator<BlockPos>> comparator) {
         final Map<BlockPos, Rail> newConnections = rails.get(newPos);
         final Rail oldRail = rails.get(lastPos).get(newPos);
@@ -222,7 +252,7 @@ public class BetterPathFinder {
 
         if (newConnections != null) {
             final boolean canTurnBack = checkTurnBackCondition(oldRail, turnBacks, newPos);
-            
+
             newConnections.forEach((connectedPos, rail) -> {
                 if (isValidConnection(rail, newDirection, path, newPos, canTurnBack)) {
                     otherOptions.add(connectedPos);
@@ -241,24 +271,24 @@ public class BetterPathFinder {
     }
 
     private static RailAngle calculateNewDirection(Rail oldRail, Map<BlockPos, Rail> newConnections) {
-        return oldRail == null ? 
+        return oldRail == null ?
             newConnections.values().stream()
                 .map(rail -> rail.facingStart)
                 .findFirst()
-                .orElse(RailAngle.E) : 
+                .orElse(RailAngle.E) :
             oldRail.facingEnd.getOpposite();
     }
 
     private static boolean checkTurnBackCondition(Rail oldRail, Set<BlockPos> turnBacks, BlockPos newPos) {
-        return oldRail != null && 
-               oldRail.railType == RailType.TURN_BACK && 
+        return oldRail != null &&
+               oldRail.railType == RailType.TURN_BACK &&
                !turnBacks.contains(newPos);
     }
 
-    private static boolean isValidConnection(Rail rail, RailAngle newDirection, 
+    private static boolean isValidConnection(Rail rail, RailAngle newDirection,
                                             List<PathPart> path, BlockPos newPos,
                                             boolean canTurnBack) {
-        return rail.railType != RailType.NONE && 
+        return rail.railType != RailType.NONE &&
                (canTurnBack || !_equals(rail.facingStart, newDirection.getOpposite())) &&
                path.stream().noneMatch(p -> p.isSame(newPos, newDirection));
     }
@@ -271,12 +301,12 @@ public class BetterPathFinder {
 
     private static boolean _equals(RailAngle a, RailAngle b) {
         if (a == null || b == null) return false;
-        
+
         // 处理角度周期性并计算最小差值
         double normalizedA = (a.angleRadians % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
         double normalizedB = (b.angleRadians % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
         double diff = Math.abs(normalizedA - normalizedB);
-        
+
         return Math.min(diff, 2 * Math.PI - diff) < ANGLE_EQUALITY_THRESHOLD;
     }
 
@@ -293,6 +323,28 @@ public class BetterPathFinder {
 
         private boolean isSame(BlockPos newPos, RailAngle newDirection) {
             return newPos.equals(pos) && _equals(direction, newDirection);
+        }
+    }
+
+    private static class VisitedSegment {
+        private final BlockPos from;
+        private final BlockPos to;
+
+        public VisitedSegment(BlockPos from, BlockPos to) {
+            this.from = from;
+            this.to = to;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (o == null || getClass() != o.getClass()) return false;
+            VisitedSegment that = (VisitedSegment) o;
+            return Objects.equals(from, that.from) && Objects.equals(to, that.to);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(from, to);
         }
     }
 }
