@@ -27,6 +27,17 @@ public class Rolling {
     private static final long ROTATION_TIMEOUT_NANOS = 1_000_000_000L;
 
     /**
+     * ★ 判定「真的下车了」的时长 —— 比滚转超时宽得多，两者**不是一回事**。
+     *
+     * 滚转要在 1 秒内归零（否则人走了世界还歪着），但 `riding` 这个布尔量一旦翻 false，
+     * `CameraInertia.apply()` 就会 `reset()`，把 offF / offR / offU 全部清零。
+     * 而实测 `setOffsets` 在停站 / 低速 / 进出站时会中断好几秒（日志里 riding 在乘坐中
+     * 反复翻转、carPos 被清成 (0,0,0)），侧向惯性于是每次都从 0 重新累积 ——
+     * 过弯的左右晃动就再也建立不起来（用户反馈：「过弯的左右晃动没了，只剩前后晃动」）。
+     */
+    private static final long RIDING_TIMEOUT_NANOS = 8_000_000_000L;
+
+    /**
      * 诊断开关：启动参数 -Dante.rollDebug=true 打开。
      * 每 20 帧打印一次相机滚转的数据来源，用于判断滚转失效断在哪一环：
      *   riding=false          → setRotation 从未被调用（handlePositions 注入那一环没通）
@@ -126,7 +137,8 @@ public class Rolling {
 
     public static void update() {
         final long nowNanos = System.nanoTime();
-        if (nowNanos - lastRotationNanos > ROTATION_TIMEOUT_NANOS) {
+        final long sinceLast = nowNanos - lastRotationNanos;
+        if (sinceLast > ROTATION_TIMEOUT_NANOS) {
             // ★ 超时（下车 / 停站期间 setOffsets 不再被调用）时**不要瞬间清零**：
             // rotation 突然变成 IDENTITY，滚转会「啪」地消失，又是一次画面抽动。
             // 让低通后的滚转角平滑衰减到 0 再归位，yaw/pitch 也一并淡出。
@@ -136,10 +148,17 @@ public class Rolling {
                 lastRollSmoothNanos = nowNanos;
                 smoothRoll *= (float) Math.exp(-dt / ROLL_TAU);
                 if (Math.abs(smoothRoll) < 1.0e-4f) {
-                    rotation = Rotation.IDENTITY;
                     smoothRoll = 0.0f;
                     lastRollSmoothNanos = 0L;
-                    riding = false;
+                    // ★ 滚转归零与「判定下车」是两件事，不能用同一个超时（原因见常量注释）。
+                    //   这里只把滚转按到位，riding 保持 —— 惯性偏移因此不会被反复清零。
+                    if (sinceLast > RIDING_TIMEOUT_NANOS) {
+                        rotation = Rotation.IDENTITY;
+                        riding = false;
+                    } else {
+                        rotation = new Rotation(rotation.pos.x(), rotation.pos.y(), rotation.pos.z(),
+                                rotation.yaw, rotation.pitch, 0.0f, rotation.reversed);
+                    }
                 } else {
                     rotation = new Rotation(rotation.pos.x(), rotation.pos.y(), rotation.pos.z(),
                             rotation.yaw, rotation.pitch, smoothRoll, rotation.reversed);
@@ -288,6 +307,8 @@ public class Rolling {
      * 轴点取车厢地板：MTR 的 calculateCar 给出的车厢中心是「轨道面 + 1 格」，
      * 所以 pos.y - 1 就是地板/轨道面高度（VehicleRidingClientMixin 里绕 (0,-1,0) 转动
      * 用的也是同一个高度）。
+     * ⚠ 但绕地板轴转会让相机 Y 跟着变（离轴点越高、倾斜后越低），实测观感是「靠近地面」，
+     *   所以下面算完之后会把 Y **拉回原值**，只留水平面内的位移 —— 见方法内的详细说明。
      *
      * 实现上不写罗德里格公式，而是把坐标系摆正再转：
      *   平移到轴点 → 绕 Y 轴 -yaw（把车体前向对齐到 +Z）→ 绕 Z 轴转 roll（这就是滚转）
@@ -317,7 +338,34 @@ public class Rolling {
         mat.rotateY(rot.yaw);
         mat.translate(-pivotX, -pivotY, -pivotZ);
 
-        return mat.transform(pos);
+        // mat.transform 是就地对 pos 变换，先留一份原始 Y 供下面的补偿计算用。
+        // 注意 sowcer 的 Vector3f 只有 x()/y()/z() 取值器和 add()，没有公开的 y 字段。
+        final float origY = pos.y();
+        final Vector3f out = mat.transform(pos);
+
+        // ★ 补偿滚转造成的「相机升降」—— 把 Y 拉回旋转前的值。
+        //
+        // 绕地板轴（pivotY = 轨道面）转 roll 时，相机 Y 会从 pos.y 变成
+        //     pivotY + (pos.x - pivotX)·sinθ + (pos.y - pivotY)·cosθ
+        // 两项都在动：
+        //   · (pos.y - pivotY)·(1 - cosθ) —— 「离轴点越远、倾斜后越低」，相机离支点约一个眼高；
+        //   · (pos.x - pivotX)·sinθ       —— 相机相对车厢中心的**横向**偏移被转成了高度。
+        //     座位不在中线上、以及 smoothCarX/Z 对车厢实际位置的低通滞后（见
+        //     CAR_POS_TAU，原始车厢位置本来就是阶梯式更新的）都会让这一项非零。
+        // 用户反馈过「过超高弯时相机高度异常下压，有种靠近地面的感觉」。
+        //
+        // 所以这里把 Y **直接拉回旋转前的值**：滚转对相机位置的影响只剩水平面内的位移，
+        // 竖直方向一律不动。只改位置、不改朝向 —— 相机跟随车体倾斜的观感由
+        // GameRendererMixin 把滚转四元数乘到渲染 PoseStack 上提供（地平线跟着歪），
+        // 那条路径完全没碰。
+        //
+        // ⚠ 实测提醒（2026-10-15 日志）：本线路报上来的 roll 一般 ≤0.1，这一项实际只有
+        //   百分之几格 —— 它是「遇到大超高线路时的保险」，并不是那次「下压」的主因
+        //   （真正的原因在 CameraInertia：riding 被误判成下车，惯性偏移被反复清零）。
+        //   留着是因为代价为零，而真碰上大滚转时它是必要的。
+        out.add(0.0f, origY - out.y(), 0.0f);
+
+        return out;
     }
 
 

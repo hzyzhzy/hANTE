@@ -88,7 +88,7 @@ public class CameraInertia {
     // 从 0.85 降到 0.45：相机是「+偏移」、车厢是「-偏移」（相对地形），两者之间的
     // 相对位移是偏移的两倍 —— 0.85 时就是 1.7 格，足以让相机穿出车厢壁（用户实测）。
     // 0.45 对应相对位移 0.9 格，仍在车厢半宽（约 1.3 格）之内。
-    private static final float MAX_OFFSET = 0.45f;
+    private static final float MAX_OFFSET = 0.55f;
     /**
      * 速度低通时间常数（秒）。
      *
@@ -162,7 +162,23 @@ public class CameraInertia {
     // 依据：镜头对前后方向比左右敏感（前方景物近、进出视野明显），所以横向必须给得更大；
     // 而真实转弯向心加速度（2.4~5）本来也远大于纵向加减速（1~1.5）。
     private static final float LONGITUDINAL_GAIN = 2.5f;
-    private static final float LATERAL_GAIN = 8.0f;
+
+    /**
+     * ★ 侧向增益：8.0 → **26.0**（2026-10-15）。
+     *
+     * 依据是实测日志（`-Dante.inertiaDebug=true` 的 40 帧峰值统计）：
+     *   偏移Peak 前 ≈ 0.18 格，右 ≈ **0.01~0.12 格** —— 侧向比纵向小十几倍，
+     *   用户的原话是「侧向晃动的幅度太小，相比纵向基本上看不出来」。
+     *
+     * 换算：侧向加速度的真实峰值只有 约 1.1 格/秒²（车厢位移的侧向分量峰值仅 0.012 格/帧，
+     * 说明确实是在沿轨道走而不是被噪声顶起来），偏移 = a·gain/刚度(70)，
+     * 也就是 1.1×8/70 ≈ 0.12 —— 与日志完全对上。
+     * 要拿到 0.4 格左右的明显侧移需要 gain ≈ 0.4×70/1.1 ≈ 26。
+     *
+     * ⚠ 侧向**不是**靠放大噪声得到的：它的位移分量很干净，放大后仍是平滑的真实向心加速度；
+     *   而拍到的 11 格/秒² 那种大加速度全在纵向（位置阶梯跳变的残渣），不去动它。
+     */
+    private static final float LATERAL_GAIN = 26.0f;
 
     /**
      * ★ 原始（车体坐标）加速度上限，单位 格/秒²。**乘增益之前**先限幅。
@@ -488,6 +504,20 @@ public class CameraInertia {
         final float stiffness = Math.max(1.0f, ClientConfig.cameraInertiaStiffness);
         final float damping   = Math.min(0.98f, Math.max(0.01f, ClientConfig.cameraInertiaDamping));
 
+        // ★ 侧向（横向）单独钉在**临界阻尼** —— 修复「过弯一直在原地来回晃」。
+        //
+        // 刚度取 70（用户已定）时 ω = √70 ≈ 8.4 rad/s，临界阻尼要求速度每秒衰减
+        //   e^(2ω) ≈ e^16.7 ≈ 5e-8；
+        // 而阻尼滑块的可用下限是 0.01（≈ e^-4.6），最多只能给出 ζ ≈ 0.27 —— **必然振荡**，
+        // 周期 2π/ω ≈ 0.75 秒，实测就是用户说的「进入弯道后一直来回晃」。
+        //
+        // 真实列车过弯，乘客感到的是**一个恒定的离心力把自己按在弯外那一侧**：
+        // 偏移是单调到位、然后一直保持，出弯再单调回来，中间不该有回弹。
+        // 临界阻尼正是这个形状（无超调、最快到位），稳态量 a·strength/stiffness 不变，
+        // 所以「甩出去多远」和原来一样，只是不再来回摆。
+        // 纵向仍用滑块的值：起步/制动那一下的「冲」是脉冲型手感，保留原样。
+        final float dampingR = Math.min(damping, (float) Math.exp(-2.0 * Math.sqrt(stiffness)));
+
         // ── 4) 弹簧-阻尼积分（**车体坐标系**：前 / 侧 / 上）
         // 驱动加速度先投影到车体坐标，偏移也累积在车体坐标 —— 这样过弯时偏移方向
         // 相对车厢固定在侧向，不会像世界坐标那样在车体转 90° 后漂成「前后」。
@@ -532,9 +562,11 @@ public class CameraInertia {
         final float sub = dt / (float) substeps;
         final float springSub = stiffness * sub;
         final float decaySub = (float) Math.pow(damping, sub);
+        // 侧向单独用临界阻尼的衰减因子（原因见 dampingR）。
+        final float decaySubR = (float) Math.pow(dampingR, sub);
         for (int i = 0; i < substeps; i++) {
             velF = (velF - accFTotal * strength * sub - offF * springSub) * decaySub;
-            velR = (velR - accRTotal * strength * sub - offR * springSub) * decaySub;
+            velR = (velR - accRTotal * strength * sub - offR * springSub) * decaySubR;
             velU = (velU - accU * strength * sub - offU * springSub) * decaySub;
 
             offF += velF * sub;
