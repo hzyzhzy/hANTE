@@ -110,7 +110,7 @@ public class BetterPathFinder {
             final Set<BlockPos> turnBacks = new HashSet<>();
             final List<BlockPos> startPositions = savedRailBaseStart.getOrderedPositions(savedRailBaseEndMidPos, i == 0);
             // pl("startPositions: " + startPositions);
-            path.add(new PathPart(null, startPositions.get(0), new ArrayList<>()));
+            path.add(new PathPart(null, startPositions.get(0), new ArrayList<>(), false));
             addPathPart(rails, runways, startPositions.get(1), startPositions.get(0), path, turnBacks, comparator);
 
             while (path.size() >= 2) {
@@ -202,19 +202,20 @@ public class BetterPathFinder {
 
     private static BlockPos addAirplanePath(RailAngle startAngle, BlockPos startPos, RailAngle expectedAngle, int turnArc, List<PathData> tempRailPath, RailType railType, int stopIndex, boolean reverse) {
         // pl("Entering addAirplanePath: reverse=" + reverse);
-        final RailAngle angleDifference = expectedAngle.sub(startAngle);
-        final boolean turnRight = angleDifference.angleRadians > 0;
-        // pl("turnRight: " + turnRight);
+        // ANTE 的 RailAngleMixin 会把 getOpposite()/add() 换成返回动态角度对象（不再等于枚举常量；
+        // 它写的 subtract() 与 MTR 的 sub() 方法名不匹配，实际没有覆盖 sub()），
+        // MTR 原来的 `tempAngle != expectedAngle` 引用比较在这里永远为真，会转满 16 步（一整圈）。
+        // 因此这里按角度差直接算出需要转几个 22.5° 的弧段。
+        final double rawAngleDifference = expectedAngle.angleRadians - startAngle.angleRadians;
+        final double angleDifference = Math.atan2(Math.sin(rawAngleDifference), Math.cos(rawAngleDifference));
+        final boolean turnRight = angleDifference > 0;
+        final int turnSteps = Math.min(RailAngle.values().length,
+                (int) Math.round(Math.abs(angleDifference) / (Math.PI / 8)));
+        // pl("turnRight: " + turnRight + ", turnSteps: " + turnSteps);
         RailAngle tempAngle = startAngle;
         BlockPos tempPos = startPos;
 
-        for (int i = 0; i < RailAngle.values().length; i++) {
-            // pl("Processing angle loop " + i);
-            if (tempAngle == expectedAngle) {
-                // pl("Reached expected angle, breaking loop");
-                break;
-            }
-
+        for (int i = 0; i < turnSteps; i++) {
             final RailAngle oldTempAngle = tempAngle;
             final BlockPos oldTempPos = tempPos;
             final RailAngle rotateAngle = turnRight ? RailAngle.SEE : RailAngle.NEE;
@@ -240,17 +241,35 @@ public class BetterPathFinder {
                                    Set<BlockPos> turnBacks, Function<Map<BlockPos, Rail>,
                                    Comparator<BlockPos>> comparator) {
         final Map<BlockPos, Rail> newConnections = rails.get(newPos);
-        final Rail oldRail = rails.get(lastPos).get(newPos);
+        final Map<BlockPos, Rail> lastConnections = rails.get(lastPos);
+        final Rail oldRail = lastConnections == null ? null : lastConnections.get(newPos);
 
         if (oldRail == null && runways.isEmpty()) return;
+        if (newConnections == null) return;
 
-        // 获取当前路径部分的访问记录
-        PathPart currentPart = path.get(path.size() - 1);
+        // 当前路径部分的访问记录
+        final PathPart currentPart = path.get(path.size() - 1);
+        // 本段入口没有实际铁轨，说明本段是飞机起飞/降落时的空中段
+        final boolean airborne = oldRail == null;
 
         final RailAngle newDirection = calculateNewDirection(oldRail, newConnections);
         final List<BlockPos> otherOptions = new ArrayList<>();
 
-        if (newConnections != null) {
+        // 原版 MTR / YMTR 的跑道逻辑：滑行到跑道尽头（该格只连着一根 RUNWAY 铁轨）后，
+        // 直接把所有跑道端点加入候选，相当于“起飞”，空中段在还原路径时再补出来。
+        // ANTE 重写 PathFinder 时漏掉了这一段，飞机只能沿铁轨滑行，跨机场的航线因此永远找不到路径。
+        // 一条路径只允许起飞一次：否则“跑道端点完全图”会被逐个排列枚举，搜索量爆炸；
+        // 同时跳过已经走过的跑道，防止来回绕圈。
+        if (oldRail != null && oldRail.railType == RailType.RUNWAY && newConnections.size() <= 1
+                && !currentPart.airborne && !runways.isEmpty()) {
+            for (BlockPos runwayPos : runways) {
+                if (runwayPos.equals(newPos)) continue;
+                if (path.stream().anyMatch(part -> part.pos.equals(runwayPos))) continue;
+                otherOptions.add(runwayPos);
+            }
+        }
+
+        if (otherOptions.isEmpty()) {
             final boolean canTurnBack = checkTurnBackCondition(oldRail, turnBacks, newPos);
 
             newConnections.forEach((connectedPos, rail) -> {
@@ -265,18 +284,18 @@ public class BetterPathFinder {
 
         if (!otherOptions.isEmpty()) {
             otherOptions.sort(comparator.apply(newConnections));
-            PathPart newPart = new PathPart(newDirection, newPos, otherOptions);
+            PathPart newPart = new PathPart(newDirection, newPos, otherOptions, airborne || currentPart.airborne);
             path.add(newPart);
         }
     }
 
     private static RailAngle calculateNewDirection(Rail oldRail, Map<BlockPos, Rail> newConnections) {
-        return oldRail == null ?
+        if (oldRail != null) return oldRail.facingEnd.getOpposite();
+        return newConnections == null ? RailAngle.E :
             newConnections.values().stream()
                 .map(rail -> rail.facingStart)
                 .findFirst()
-                .orElse(RailAngle.E) :
-            oldRail.facingEnd.getOpposite();
+                .orElse(RailAngle.E);
     }
 
     private static boolean checkTurnBackCondition(Rail oldRail, Set<BlockPos> turnBacks, BlockPos newPos) {
@@ -314,11 +333,13 @@ public class BetterPathFinder {
         private final RailAngle direction;
         private final BlockPos pos;
         private final List<BlockPos> otherOptions;
+        private final boolean airborne;
 
-        private PathPart(RailAngle direction, BlockPos pos, List<BlockPos> otherOptions) {
+        private PathPart(RailAngle direction, BlockPos pos, List<BlockPos> otherOptions, boolean airborne) {
             this.direction = direction;
             this.pos = pos;
             this.otherOptions = new ArrayList<>(otherOptions);
+            this.airborne = airborne;
         }
 
         private boolean isSame(BlockPos newPos, RailAngle newDirection) {
