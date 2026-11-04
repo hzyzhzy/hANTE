@@ -89,7 +89,9 @@ public class TrainVirtualDrive extends TrainClient {
       this.isCurrentlyManual = true;
       this.manualNotch = 114514;
       this.nextStoppingIndex = this.path.size() - 1;
+      if (this.vdNotch > 0) this.doorTarget = false;
       super.simulateTrain(world, ticksElapsed, speedCallback, announcementCallback, lightRailAnnouncementCallback);
+      if (this.vdNotch > 0) this.doorTarget = false;
       if (this.isOnRoute && !(ClientData.getShiftHoldingTicks() >= 30.0F)) {
          if (this.isRepeat()) {
             int headIndex = this.getIndex(this.railProgress + this.PROG_TOLERANCE, false);
@@ -309,6 +311,7 @@ public class TrainVirtualDrive extends TrainClient {
       hiddenTrainId = source.id;
       activeTrain = new TrainVirtualDrive(source);
       activeTrain.atpCutout = true;
+      activeTrain.doorTarget = false;
       cn.zbx1425.mtrsteamloco.Main.LOGGER.info("[VD] start sourceId={} speed={} progress={}", source.id, source.getSpeed(), source.getRailProgress());
       activeTrain.railProgress = source.getRailProgress();
       activeTrain.speed = source.getSpeed();
