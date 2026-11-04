@@ -1,6 +1,8 @@
 package cn.zbx1425.mtrsteamloco.game;
 
 import mtr.Registry;
+import mtr.data.RailwayData;
+import mtr.data.RailwayDataCoolDownModule;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -10,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.lang.reflect.Field;
 
 /**
  * Server-side bookkeeping for virtual driving.
@@ -22,6 +25,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class VirtualDriveServerData {
 
     private static final Map<UUID, Player> DRIVING_PLAYERS = new ConcurrentHashMap<>();
+    private static Field playerRidingCoolDownField;
+    private static boolean playerRidingCoolDownFieldTried;
 
     private VirtualDriveServerData() {
     }
@@ -38,12 +43,42 @@ public final class VirtualDriveServerData {
     public static void tick(MinecraftServer server) {
         for (Player player : DRIVING_PLAYERS.values()) {
             if (player == null || player.isRemoved()) continue;
+            holdRidingCooldown(player);
             player.fallDistance = 0.0F;
             player.setNoGravity(true);
             player.noPhysics = true;
             player.getAbilities().mayfly = true;
             if (player instanceof ServerPlayer serverPlayer) serverPlayer.onUpdateAbilities();
             Registry.setInTeleportationState(player, true);
+        }
+    }
+
+    /**
+     * MTR's RailwayDataCoolDownModule decrements playerRidingCoolDown and calls
+     * player.stopRiding() when it reaches zero. Holding it at 2 keeps the virtual-drive
+     * player attached. Reflection is used so no new Mixin is added at startup.
+     */
+    private static void holdRidingCooldown(Player player) {
+        if (!playerRidingCoolDownFieldTried) {
+            playerRidingCoolDownFieldTried = true;
+            try {
+                playerRidingCoolDownField = RailwayDataCoolDownModule.class.getDeclaredField("playerRidingCoolDown");
+                playerRidingCoolDownField.setAccessible(true);
+            } catch (Throwable ignored) {
+                playerRidingCoolDownField = null;
+            }
+        }
+        if (playerRidingCoolDownField == null) return;
+        try {
+            RailwayData data = RailwayData.getInstance(player.level());
+            if (data == null) return;
+            Object map = playerRidingCoolDownField.get(data.railwayDataCoolDownModule);
+            if (map instanceof Map<?, ?>) {
+                @SuppressWarnings("unchecked")
+                Map<Player, Integer> cooldown = (Map<Player, Integer>) map;
+                cooldown.put(player, 2);
+            }
+        } catch (Throwable ignored) {
         }
     }
 
@@ -59,6 +94,7 @@ public final class VirtualDriveServerData {
                     player.stopRiding();
                 }
             }
+            holdRidingCooldown(player);
             DRIVING_PLAYERS.put(player.getUUID(), player);
             Registry.setInTeleportationState(player, true);
         } else {

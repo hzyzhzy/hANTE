@@ -1,6 +1,7 @@
 package cn.zbx1425.mtrsteamloco.game;
 
 import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
 
 /**
  * Keyboard input for virtual driving. The original NTE HMI polled the MTR key bindings from its
@@ -29,13 +30,17 @@ public final class DriveInputHandler {
             return;
         }
 
+        Minecraft client = Minecraft.getInstance();
+        boolean accelerateDown = ACCELERATE.isDown() || (client.options != null && client.options.keyUp.isDown());
+        boolean brakeDown = BRAKE.isDown() || (client.options != null && client.options.keyDown.isDown());
+
         boolean any = false;
-        if (ACCELERATE.isDown()) {
+        if (accelerateDown) {
             if (trigger(1)) {
                 train.vdNotch = Math.min(train.vdNotch + 1, train.powerNotches);
             }
             any = true;
-        } else if (BRAKE.isDown()) {
+        } else if (brakeDown) {
             if (trigger(2)) {
                 train.vdNotch = Math.max(train.vdNotch - 1, -train.brakeNotches);
             }
