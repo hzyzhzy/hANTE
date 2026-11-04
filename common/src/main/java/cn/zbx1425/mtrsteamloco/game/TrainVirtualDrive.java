@@ -43,6 +43,7 @@ public class TrainVirtualDrive extends TrainClient {
    public double PROG_TOLERANCE = 5.0;
    public static TrainVirtualDrive activeTrain;
    public static boolean stopping;
+   private static int debugTicks;
    public static long hiddenTrainId;
    public static TrainVirtualDrive pendingRemove;
    private TrainClient sourceTrain;
@@ -152,6 +153,10 @@ public class TrainVirtualDrive extends TrainClient {
 
          if (this.doorValue > 0.0F || this.doorTarget) {
             this.speed = 0.0F;
+         }
+
+         if ((debugTicks++ % 20) == 0) {
+            cn.zbx1425.mtrsteamloco.Main.LOGGER.info("[VD] sim speed={} notch={} onRoute={} progress={}", this.speed, this.vdNotch, this.isOnRoute, this.railProgress);
          }
 
          if (this.distances.get(this.nextPlatformIndex) < this.railProgress - 10.0) {
@@ -286,6 +291,7 @@ public class TrainVirtualDrive extends TrainClient {
       stopping = false;
       hiddenTrainId = source.id;
       activeTrain = new TrainVirtualDrive(source);
+      cn.zbx1425.mtrsteamloco.Main.LOGGER.info("[VD] start sourceId={} speed={} progress={}", source.id, source.getSpeed(), source.getRailProgress());
       activeTrain.railProgress = source.getRailProgress();
       activeTrain.speed = source.getSpeed();
       activeTrain.vehicleRidingClient.startRiding(
@@ -304,6 +310,7 @@ public class TrainVirtualDrive extends TrainClient {
    public static void stopDriving() {
       if (activeTrain != null) {
          TrainVirtualDrive train = activeTrain;
+         cn.zbx1425.mtrsteamloco.Main.LOGGER.info("[VD] stop speed={} notch={}", train.getSpeed(), train.vdNotch);
          stopping = true;
          PacketVirtualDrive.sendVirtualDriveC2S(false);
          activeTrain = null;
@@ -326,6 +333,7 @@ public class TrainVirtualDrive extends TrainClient {
          activeTrain.isRemoved = false;
          if (!ClientData.TRAINS.contains(activeTrain)) {
             ClientData.TRAINS.add(activeTrain);
+            cn.zbx1425.mtrsteamloco.Main.LOGGER.info("[VD] re-added virtual train id={}", activeTrain.id);
          }
       }
    }

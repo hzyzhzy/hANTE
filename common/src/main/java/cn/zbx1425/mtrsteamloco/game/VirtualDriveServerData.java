@@ -27,6 +27,7 @@ public final class VirtualDriveServerData {
     private static final Map<UUID, Player> DRIVING_PLAYERS = new ConcurrentHashMap<>();
     private static Field playerRidingCoolDownField;
     private static boolean playerRidingCoolDownFieldTried;
+    private static boolean playerRidingCoolDownFieldLogged;
 
     private VirtualDriveServerData() {
     }
@@ -64,8 +65,10 @@ public final class VirtualDriveServerData {
             try {
                 playerRidingCoolDownField = RailwayDataCoolDownModule.class.getDeclaredField("playerRidingCoolDown");
                 playerRidingCoolDownField.setAccessible(true);
-            } catch (Throwable ignored) {
+                cn.zbx1425.mtrsteamloco.Main.LOGGER.info("[VD] server cooldown field attached");
+            } catch (Throwable t) {
                 playerRidingCoolDownField = null;
+                cn.zbx1425.mtrsteamloco.Main.LOGGER.warn("[VD] server cooldown field unavailable", t);
             }
         }
         if (playerRidingCoolDownField == null) return;
