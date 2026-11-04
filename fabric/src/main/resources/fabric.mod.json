@@ -2,14 +2,14 @@
 	"schemaVersion": 1,
 	"id": "mtrsteamloco",
 	"version": "${version}",
-	"name": "Aphrodite's Nemo's Transit Expansion",
-	"description": "Various experimental add-on functionalities for the Minecraft Transit Railway mod, made by Zbx1425 and Aphrodite281",
+	"name": "HZYMTR's Aphrodite's Nemo's Transit Expansion",
+	"description": "Various experimental add-on functionalities made by Zbx1425, Aphrodite281, HZYZHZY and Ch1hayaAnonQWQ for the Minecraft Transit Railway mod.",
 	"authors": [
-		"Zbx1425", "Aphrodite281"
+		"Zbx1425", "Aphrodite281", "HZYZHZY", "Ch1hayaAnonQWQ"
 	],
 	"contact": {
-		"homepage": "https://aphrodite281.github.io/mtr-ante/",
-		"sources": "https://github.com/zbx1425/mtr-steamloco"
+		"homepage": "https://github.com/hzyzhzy/hANTE",
+		"sources": "https://github.com/hzyzhzy/hANTE"
 	},
 	"license": "MIT",
 	"icon": "icon.png",
