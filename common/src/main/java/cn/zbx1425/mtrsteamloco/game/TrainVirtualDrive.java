@@ -281,7 +281,7 @@ public class TrainVirtualDrive extends TrainClient {
                         train.vehicleRidingClient.getPercentageZ(player.getUUID())
                      );
                   PacketVirtualDrive.sendVirtualDriveC2S(true);
-                  ((cn.zbx1425.mtrsteamloco.mixin.VehicleRidingClientAccessor) (Object) train.vehicleRidingClient).removeRider(player.getUUID());
+                  ((cn.zbx1425.mtrsteamloco.data.VehicleRidingClientExtraSupplier) train.vehicleRidingClient).removeRider(player.getUUID());
                   Minecraft.getInstance().execute(() -> ClientData.TRAINS.add(activeTrain));
                   return true;
                }

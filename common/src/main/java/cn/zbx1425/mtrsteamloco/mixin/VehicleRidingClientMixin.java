@@ -11,6 +11,7 @@ import net.minecraft.world.phys.Vec3;
 import mtr.data.VehicleRidingClient;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.spongepowered.asm.mixin.Mixin;
@@ -79,6 +80,20 @@ public abstract class VehicleRidingClientMixin implements VehicleRidingClientExt
 
     /** 只读取，不修改。 */
     @Shadow(remap = false) private Map<UUID, Float> percentagesZ;
+    @Shadow(remap = false) private Set<UUID> ridingEntities;
+    @Shadow(remap = false) private Map<UUID, Float> percentagesX;
+    @Shadow(remap = false) private Map<UUID, Float> newPercentagesX;
+    @Shadow(remap = false) private Map<UUID, Float> newPercentagesZ;
+
+    /** 虚拟驾驶开始时把玩家从真实列车的乘客表中移除。 */
+    @Override
+    public void removeRider(UUID uuid) {
+        if (ridingEntities != null) ridingEntities.remove(uuid);
+        if (percentagesX != null) percentagesX.remove(uuid);
+        if (percentagesZ != null) percentagesZ.remove(uuid);
+        if (newPercentagesX != null) newPercentagesX.remove(uuid);
+        if (newPercentagesZ != null) newPercentagesZ.remove(uuid);
+    }
 
     /**
      * 只读注入：MTR 的 setOffsets 已经跑完，这里仅把本地玩家所处车厢的姿态记录下来。

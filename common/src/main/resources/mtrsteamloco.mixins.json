@@ -30,8 +30,7 @@
     "VehicleRidingClientMixin",
     "CameraMixin",
     "CameraAccessor",
-    "YmtrAnteFallbackMixin",
-    "VehicleRidingClientAccessor"
+    "YmtrAnteFallbackMixin"
   ],
   "injectors": {
     "defaultRequire": 1
