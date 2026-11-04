@@ -1,5 +1,9 @@
 # hANTE
 
+<p align="center">
+  <img src="docs/hante-icon.png" alt="hANTE" width="320">
+</p>
+
 基于 [Aphrodite's Nemo's Transit Expansion (MTR-ANTE)](https://github.com/aphrodite281/mtr-ante)
 的独立分支，针对 **YMTR**（Minecraft Transit Railway 的第三方分支）做了兼容与手感调整，
 并移植了上游的部分修复。
