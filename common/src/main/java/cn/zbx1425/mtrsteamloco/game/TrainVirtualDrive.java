@@ -10,7 +10,9 @@ import mtr.data.TrainClient.AnnouncementCallback;
 import mtr.data.TrainClient.SpeedCallback;
 import mtr.mappings.Text;
 import mtr.path.PathData;
+import mtr.data.RailType;
 import mtr.data.Route;
+import mtr.data.Train;
 import mtr.data.Station;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
@@ -61,11 +63,19 @@ public class TrainVirtualDrive extends TrainClient {
       }));
 
       this.sourceTrain = trainClient;
+      float pathMax = 0.0F;
       for (PathData path : this.path) {
-         this.vdMaxSpeed = Math.max(this.vdMaxSpeed, path.rail.railType.maxBlocksPerTick);
+         RailType type = path.rail.railType;
+         if (type != null && type != RailType.NONE) {
+            pathMax = Math.max(pathMax, type.maxBlocksPerTick);
+         }
       }
-
-      this.vdMaxSpeed += 0.2777778F;
+      if (pathMax <= 0.0F) {
+         RailType manualType = Train.convertMaxManualSpeed(this.maxManualSpeed);
+         pathMax = manualType != null ? manualType.maxBlocksPerTick : RailType.IRON.maxBlocksPerTick;
+      }
+      this.vdMaxSpeed = pathMax + 0.2777778F;
+      cn.zbx1425.mtrsteamloco.Main.LOGGER.info("[VD] maxSpeed={} pathMax={} pathSize={}", this.vdMaxSpeed, pathMax, this.path.size());
    }
 
    @Override
@@ -190,9 +200,9 @@ public class TrainVirtualDrive extends TrainClient {
             PathData pathSeg = this.path.get(i);
             this.railAheadLookup.add(pathSeg.startingPos.asLong());
             if (i > 0 && this.distances.get(i - 1) < this.railProgress && this.distances.get(i) > this.railProgress - this.spacing * this.trainCars) {
-               this.atpYellowSpeed = Math.min(this.atpYellowSpeed, pathSeg.rail.railType.maxBlocksPerTick);
-               this.atpRedSpeed = Math.min(this.atpRedSpeed, pathSeg.rail.railType.maxBlocksPerTick + 0.06944445F);
-               effectiveLimit = Math.min(effectiveLimit, pathSeg.rail.railType.maxBlocksPerTick);
+               this.atpYellowSpeed = Math.min(this.atpYellowSpeed, railMaxSpeed(pathSeg));
+               this.atpRedSpeed = Math.min(this.atpRedSpeed, railMaxSpeed(pathSeg) + 0.06944445F);
+               effectiveLimit = Math.min(effectiveLimit, railMaxSpeed(pathSeg));
             }
 
             if (pathSeg.dwellTime > 0 && i != this.doorOpenedAtPlatformIndex) {
@@ -228,15 +238,15 @@ public class TrainVirtualDrive extends TrainClient {
                }
             } else if (i > 0 && this.distances.get(i - 1) > this.railProgress) {
                float yellowPatternSpeed = (float)Math.sqrt(
-                  2.0F * this.accelerationConstant * (this.distances.get(i - 1) - this.railProgress) + Math.pow(pathSeg.rail.railType.maxBlocksPerTick, 2.0)
+                  2.0F * this.accelerationConstant * (this.distances.get(i - 1) - this.railProgress) + Math.pow(railMaxSpeed(pathSeg), 2.0)
                );
                if (yellowPatternSpeed < this.atpYellowSpeed) {
                   this.atpYellowSpeed = yellowPatternSpeed;
                }
 
-               if (pathSeg.rail.railType.maxBlocksPerTick < effectiveLimit && yellowPatternSpeed < targetPatternSpeed) {
+               if (railMaxSpeed(pathSeg) < effectiveLimit && yellowPatternSpeed < targetPatternSpeed) {
                   targetPatternSpeed = yellowPatternSpeed;
-                  this.atpTargetSpeed = pathSeg.rail.railType.maxBlocksPerTick;
+                  this.atpTargetSpeed = railMaxSpeed(pathSeg);
                   this.atpTargetDistance = this.distances.get(i - 1);
                }
 
@@ -244,7 +254,7 @@ public class TrainVirtualDrive extends TrainClient {
                   this.atpRedSpeed,
                   (float)Math.sqrt(
                      2.0F * this.accelerationConstant / this.yellowSpeedBrakeRatio * this.redSpeedBrakeRatio * (this.distances.get(i - 1) - this.railProgress)
-                        + Math.pow(pathSeg.rail.railType.maxBlocksPerTick + 0.06944445F, 2.0)
+                        + Math.pow(railMaxSpeed(pathSeg) + 0.06944445F, 2.0)
                   )
                );
             }
@@ -365,6 +375,12 @@ public class TrainVirtualDrive extends TrainClient {
 
    public boolean hasUpcomingStopForHmi() {
       return this.nextStoppingIndex >= 0 && this.nextStoppingIndex < this.path.size() - 1;
+   }
+
+   private float railMaxSpeed(PathData path) {
+      RailType type = path.rail.railType;
+      if (type == null || type == RailType.NONE) return this.vdMaxSpeed;
+      return type.maxBlocksPerTick;
    }
 
    public float getPercentNotch() {
