@@ -29,6 +29,7 @@ import cn.zbx1425.mtrsteamloco.gui.DirectNodeScreen;
 import cn.zbx1425.mtrsteamloco.render.RailDistanceRenderer;
 import cn.zbx1425.mtrsteamloco.data.CameraInertia;
 import cn.zbx1425.mtrsteamloco.data.Rolling;
+import cn.zbx1425.mtrsteamloco.game.TrainVirtualDrive;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,6 +50,7 @@ public class RenderTrainsMixin implements IGui{
         // 注意：这里**不**拦截阴影 pass。MTR 自己的列车渲染必须在阴影 pass 里照常进行，
         // 否则列车不会往阴影贴图投影（会没有影子）。真正每帧重复且昂贵的是下面 renderTail 里
         // ANTE 那一套轨道渲染/几何提交，拦截点在那里。
+        TrainVirtualDrive.keepAlive();
         Minecraft.getInstance().level.getProfiler().popPush("MTRRailwayData");
         RenderUtil.commonVertexConsumers = vertexConsumers;
         RenderUtil.commonPoseStack = matrices;

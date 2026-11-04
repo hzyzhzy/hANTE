@@ -166,7 +166,12 @@ public class TrainVirtualDrive extends TrainClient {
          }
 
          if ((debugTicks++ % 20) == 0) {
-            cn.zbx1425.mtrsteamloco.Main.LOGGER.info("[VD] sim speed={} notch={} onRoute={} progress={}", this.speed, this.vdNotch, this.isOnRoute, this.railProgress);
+            int currentIndex = this.getIndex(this.railProgress, false);
+            RailType currentRail = currentIndex >= 0 && currentIndex < this.path.size()
+                    ? this.path.get(currentIndex).rail.railType : null;
+            cn.zbx1425.mtrsteamloco.Main.LOGGER.info("[VD] sim speed={} notch={} onRoute={} progress={} rail={} atpY={} atpR={} eb={}",
+                    this.speed, this.vdNotch, this.isOnRoute, this.railProgress, currentRail,
+                    this.atpYellowSpeed, this.atpRedSpeed, this.atpEmergencyBrake);
          }
 
          if (this.distances.get(this.nextPlatformIndex) < this.railProgress - 10.0) {
@@ -270,7 +275,9 @@ public class TrainVirtualDrive extends TrainClient {
             this.atpTargetSpeed = -1.0F;
          }
 
-         if (this.speed > this.atpRedSpeed && !this.atpCutout) {
+         if (this.atpCutout) {
+            this.atpEmergencyBrake = false;
+         } else if (this.speed > this.atpRedSpeed) {
             this.atpEmergencyBrake = true;
          }
       } else {
@@ -301,6 +308,7 @@ public class TrainVirtualDrive extends TrainClient {
       stopping = false;
       hiddenTrainId = source.id;
       activeTrain = new TrainVirtualDrive(source);
+      activeTrain.atpCutout = true;
       cn.zbx1425.mtrsteamloco.Main.LOGGER.info("[VD] start sourceId={} speed={} progress={}", source.id, source.getSpeed(), source.getRailProgress());
       activeTrain.railProgress = source.getRailProgress();
       activeTrain.speed = source.getSpeed();
@@ -314,6 +322,7 @@ public class TrainVirtualDrive extends TrainClient {
       source.isRemoved = true;
       ClientData.TRAINS.remove(source);
       ClientData.TRAINS.add(activeTrain);
+      cn.zbx1425.mtrsteamloco.Main.LOGGER.info("[VD] activeId={} hiddenId={}", activeTrain.id, hiddenTrainId);
       return true;
    }
 
@@ -337,7 +346,7 @@ public class TrainVirtualDrive extends TrainClient {
          pendingRemove = null;
       }
       if (hiddenTrainId != 0) {
-         ClientData.TRAINS.removeIf(train -> train.id == hiddenTrainId);
+         ClientData.TRAINS.removeIf(train -> train != activeTrain && train.id == hiddenTrainId);
       }
       if (activeTrain != null && !stopping) {
          activeTrain.isRemoved = false;

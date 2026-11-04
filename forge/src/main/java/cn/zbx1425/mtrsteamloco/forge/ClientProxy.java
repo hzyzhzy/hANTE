@@ -142,6 +142,9 @@ public class ClientProxy {
                                                     throw new SimpleCommandExceptionType(Text.literal("当前没有正在手动驾驶的列车")).create();
                                                 }
                                                 TrainVirtualDrive.activeTrain.atpCutout = !TrainVirtualDrive.activeTrain.atpCutout;
+                                                if (TrainVirtualDrive.activeTrain.atpCutout) {
+                                                    TrainVirtualDrive.activeTrain.atpEmergencyBrake = false;
+                                                }
                                                 return 1;
                                             })))
                             .then(Commands.literal("stat")
