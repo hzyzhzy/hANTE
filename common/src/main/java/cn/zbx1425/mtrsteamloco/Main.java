@@ -104,6 +104,8 @@ public class Main {
 					PacketUpdateTrainCustomConfigs::receiveUpdateC2S);
 			mtr.Registry.registerNetworkReceiver(PacketReplaceRailNode.C2S, 
 					PacketReplaceRailNode::receiveUpdateC2S);
+			mtr.Registry.registerNetworkReceiver(PacketVirtualDrive.PACKET_VIRTUAL_DRIVE,
+					PacketVirtualDrive::receiveVirtualDriveC2S);
 
 			mtr.Registry.registerPlayerJoinEvent(PacketVersionCheck::sendVersionCheckS2C);
 		}

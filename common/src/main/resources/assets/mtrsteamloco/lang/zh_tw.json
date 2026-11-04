@@ -124,5 +124,6 @@
     "gui.mtrsteamloco.direct_node.success_bind": "直線節點綁定成功",
     "gui.mtrsteamloco.direct_node.unbind": "解除綁定",
     "tooltip.mtrsteamloco.direct_node.bound": "§b已綁定：%s°",
-    "tooltip.mtrsteamloco.direct_node.unbound": "未綁定"
+    "tooltip.mtrsteamloco.direct_node.unbound": "未綁定",
+    "key.mtrsteamloco.train_neutral": "回零/惰行"
 }

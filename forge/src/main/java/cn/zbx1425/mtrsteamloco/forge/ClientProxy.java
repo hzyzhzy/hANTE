@@ -3,13 +3,18 @@ package cn.zbx1425.mtrsteamloco.forge;
 import cn.zbx1425.mtrsteamloco.ClientConfig;
 import cn.zbx1425.mtrsteamloco.Main;
 import cn.zbx1425.mtrsteamloco.MainClient;
+import cn.zbx1425.mtrsteamloco.game.TrainVirtualDrive;
 import cn.zbx1425.mtrsteamloco.gui.ConfigScreen;
+import cn.zbx1425.mtrsteamloco.gui.DriveConsoleOverlay;
+import cn.zbx1425.mtrsteamloco.game.DriveInputHandler;
 import cn.zbx1425.mtrsteamloco.render.RenderUtil;
 import cn.zbx1425.mtrsteamloco.render.train.SteamSmokeParticle;
+import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import mtr.mappings.Text;
 import net.minecraft.client.Minecraft;
 #if MC_VERSION >= "11900"
 import net.minecraftforge.client.event.CustomizeGuiOverlayEvent;
+import net.minecraftforge.client.event.RenderGuiEvent;
 import net.minecraftforge.client.event.RegisterParticleProvidersEvent;
 import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
 #else
@@ -21,6 +26,7 @@ import net.minecraft.commands.Commands;
 #if MC_VERSION >= "11800"
 import net.minecraftforge.client.event.RegisterClientCommandsEvent;
 #endif
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import cn.zbx1425.mtrsteamloco.gui.ScriptDebugOverlay;
@@ -69,6 +75,23 @@ public class ClientProxy {
         }
 
         @SubscribeEvent
+        public static void onClientTick(TickEvent.ClientTickEvent event) {
+            if (event.phase == TickEvent.Phase.END) {
+                DriveInputHandler.tick();
+            }
+        }
+
+#if MC_VERSION >= "12000"
+        @SubscribeEvent
+        public static void onRenderGuiPost(RenderGuiEvent.Post event) {
+            if (TrainVirtualDrive.activeTrain != null) {
+                DriveConsoleOverlay.setData(TrainVirtualDrive.activeTrain.vdNotch, TrainVirtualDrive.activeTrain);
+                DriveConsoleOverlay.render(event.getGuiGraphics());
+            }
+        }
+#endif
+
+        @SubscribeEvent
 #if MC_VERSION >= "11900"
         public static void onDebugOverlay(CustomizeGuiOverlayEvent.DebugText event) {
 #else
@@ -104,6 +127,21 @@ public class ClientProxy {
                                         ScriptContextManager.clearDebugInfo();
                                         return 1;
                                     }))
+                            .then(Commands.literal("virtdrive")
+                                    .executes(context -> {
+                                        if (!TrainVirtualDrive.startDrivingRidingTrain()) {
+                                            throw new SimpleCommandExceptionType(Text.literal("你需要先坐在一辆自动运行的列车上")).create();
+                                        }
+                                        return 1;
+                                    })
+                                    .then(Commands.literal("atpcutout")
+                                            .executes(context -> {
+                                                if (TrainVirtualDrive.activeTrain == null) {
+                                                    throw new SimpleCommandExceptionType(Text.literal("当前没有正在手动驾驶的列车")).create();
+                                                }
+                                                TrainVirtualDrive.activeTrain.atpCutout = !TrainVirtualDrive.activeTrain.atpCutout;
+                                                return 1;
+                                            })))
                             .then(Commands.literal("stat")
                                     .executes(context -> {
                                         Minecraft.getInstance().tell(() -> {

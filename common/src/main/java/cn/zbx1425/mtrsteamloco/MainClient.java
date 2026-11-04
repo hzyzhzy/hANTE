@@ -2,6 +2,9 @@ package cn.zbx1425.mtrsteamloco;
 
 import cn.zbx1425.mtrsteamloco.network.PacketScreen;
 import cn.zbx1425.mtrsteamloco.network.PacketVersionCheck;
+import cn.zbx1425.mtrsteamloco.network.PacketVirtualDrivingPlayers;
+import cn.zbx1425.mtrsteamloco.game.TrainVirtualDrive;
+import cn.zbx1425.mtrsteamloco.game.VirtualDriveClientData;
 import cn.zbx1425.mtrsteamloco.render.ShadersModHandler;
 import cn.zbx1425.mtrsteamloco.render.block.BlockEntityEyeCandyRenderer;
 import cn.zbx1425.mtrsteamloco.render.block.BlockEntityDirectNodeRenderer;
@@ -39,14 +42,19 @@ public class MainClient {
 
 			RegistryClient.registerNetworkReceiver(PacketVersionCheck.PACKET_VERSION_CHECK, PacketVersionCheck::receiveVersionCheckS2C);
 			RegistryClient.registerNetworkReceiver(PacketScreen.PACKET_SHOW_SCREEN, PacketScreen::receiveScreenS2C);
+			RegistryClient.registerNetworkReceiver(PacketVirtualDrivingPlayers.PACKET_VIRTUAL_DRIVING_PLAYERS,
+					PacketVirtualDrivingPlayers.Client::receiveVirtualDrivingPlayersS2C);
 
 			RegistryClient.registerItemModelPredicate("mtr:selected", Main.BRIDGE_CREATOR_1.get(), ItemBlockClickingBase.TAG_POS);
 			RegistryClient.registerItemModelPredicate("mtr:selected", Main.COMPOUND_CREATOR.get(), ItemBlockClickingBase.TAG_POS);
 			RegistryClient.registerKeyBinding(KeyMappings.TRAIN_SCREEN);
+			RegistryClient.registerKeyBinding(KeyMappings.TRAIN_NEUTRAL);
 		}
 
 		RegistryClient.registerPlayerJoinEvent(localPlayer -> {
 			railRenderDispatcher.clearRail();
+			TrainVirtualDrive.activeTrain = null;
+			VirtualDriveClientData.drivingPlayers.clear();
 		});
 	}
 

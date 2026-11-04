@@ -30,7 +30,8 @@
     "VehicleRidingClientMixin",
     "CameraMixin",
     "CameraAccessor",
-    "YmtrAnteFallbackMixin"
+    "YmtrAnteFallbackMixin",
+    "VehicleRidingClientAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
@@ -50,9 +51,8 @@
     "RailAngleMixin",
     "ItemNodeModifierBaseMixin",
     "PathFinderMixin",
-    "ItemRailModifierMixin"
+    "ItemRailModifierMixin",
+    "RailwayDataCoolDownModuleMixin"
   ],
-  "server": [
-    
-  ]
+  "server": []
 }

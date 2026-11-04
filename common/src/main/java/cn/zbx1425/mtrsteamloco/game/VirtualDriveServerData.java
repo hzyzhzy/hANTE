@@ -1,0 +1,61 @@
+package cn.zbx1425.mtrsteamloco.game;
+
+import mtr.Registry;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
+
+import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * Server-side bookkeeping for virtual driving.
+ *
+ * <p>NeoMTR's built-in NTE hooks this into {@code RailwayDataCoolDownModule}; YMTR 3.6.3 does
+ * not have those members, so the state lives here instead. The player is kept in the same
+ * no-gravity/no-clip/teleportation state MTR uses while a player rides a train; this is what
+ * stops the server from dropping them out of the world while the client-side virtual train moves.
+ */
+public final class VirtualDriveServerData {
+
+    private static final Map<UUID, Player> DRIVING_PLAYERS = new ConcurrentHashMap<>();
+
+    private VirtualDriveServerData() {
+    }
+
+    public static Set<UUID> getDrivingPlayers() {
+        return DRIVING_PLAYERS.keySet();
+    }
+
+    public static Collection<Player> getDrivingPlayerObjects() {
+        return DRIVING_PLAYERS.values();
+    }
+
+    public static void updatePlayerInVirtualDrive(Player player, boolean isDriving) {
+        if (isDriving) {
+            player.fallDistance = 0.0F;
+            player.setNoGravity(true);
+            player.noPhysics = true;
+            player.getAbilities().mayfly = true;
+            if (player instanceof ServerPlayer serverPlayer) {
+                serverPlayer.onUpdateAbilities();
+                if (player.getVehicle() != null) {
+                    player.stopRiding();
+                }
+            }
+            DRIVING_PLAYERS.put(player.getUUID(), player);
+            Registry.setInTeleportationState(player, true);
+        } else {
+            DRIVING_PLAYERS.remove(player.getUUID());
+            player.setNoGravity(false);
+            player.noPhysics = false;
+            if (player instanceof ServerPlayer serverPlayer) {
+                serverPlayer.gameMode.getGameModeForPlayer().updatePlayerAbilities(player.getAbilities());
+                serverPlayer.onUpdateAbilities();
+            }
+            Registry.setInTeleportationState(player, false);
+        }
+    }
+}
