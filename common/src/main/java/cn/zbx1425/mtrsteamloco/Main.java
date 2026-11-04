@@ -3,6 +3,7 @@ package cn.zbx1425.mtrsteamloco;
 import cn.zbx1425.mtrsteamloco.block.*;
 import cn.zbx1425.mtrsteamloco.item.*;
 import cn.zbx1425.mtrsteamloco.network.*;
+import cn.zbx1425.mtrsteamloco.game.VirtualDriveServerData;
 import com.google.gson.JsonParser;
 import mtr.CreativeModeTabs;
 import mtr.RegistryObject;
@@ -106,6 +107,7 @@ public class Main {
 					PacketReplaceRailNode::receiveUpdateC2S);
 			mtr.Registry.registerNetworkReceiver(PacketVirtualDrive.PACKET_VIRTUAL_DRIVE,
 					PacketVirtualDrive::receiveVirtualDriveC2S);
+			mtr.Registry.registerTickEvent(VirtualDriveServerData::tick);
 
 			mtr.Registry.registerPlayerJoinEvent(PacketVersionCheck::sendVersionCheckS2C);
 		}

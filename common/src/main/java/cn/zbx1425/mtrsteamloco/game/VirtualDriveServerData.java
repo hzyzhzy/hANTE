@@ -1,6 +1,7 @@
 package cn.zbx1425.mtrsteamloco.game;
 
 import mtr.Registry;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 
@@ -31,6 +32,19 @@ public final class VirtualDriveServerData {
 
     public static Collection<Player> getDrivingPlayerObjects() {
         return DRIVING_PLAYERS.values();
+    }
+
+    /** Called from MTR's server tick event; no mixin needed. */
+    public static void tick(MinecraftServer server) {
+        for (Player player : DRIVING_PLAYERS.values()) {
+            if (player == null || player.isRemoved()) continue;
+            player.fallDistance = 0.0F;
+            player.setNoGravity(true);
+            player.noPhysics = true;
+            player.getAbilities().mayfly = true;
+            if (player instanceof ServerPlayer serverPlayer) serverPlayer.onUpdateAbilities();
+            Registry.setInTeleportationState(player, true);
+        }
     }
 
     public static void updatePlayerInVirtualDrive(Player player, boolean isDriving) {

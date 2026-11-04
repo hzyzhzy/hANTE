@@ -50,8 +50,7 @@
     "RailAngleMixin",
     "ItemNodeModifierBaseMixin",
     "PathFinderMixin",
-    "ItemRailModifierMixin",
-    "RailwayDataCoolDownModuleMixin"
+    "ItemRailModifierMixin"
   ],
   "server": []
 }
