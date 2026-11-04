@@ -5,7 +5,7 @@ import cn.zbx1425.mtrsteamloco.Main;
 import cn.zbx1425.mtrsteamloco.MainClient;
 import cn.zbx1425.mtrsteamloco.game.TrainVirtualDrive;
 import cn.zbx1425.mtrsteamloco.gui.ConfigScreen;
-import cn.zbx1425.mtrsteamloco.gui.DriveConsoleOverlay;
+import cn.zbx1425.mtrsteamloco.gui.VirtualDriveHmi;
 import cn.zbx1425.mtrsteamloco.game.DriveInputHandler;
 import cn.zbx1425.mtrsteamloco.render.RenderUtil;
 import cn.zbx1425.mtrsteamloco.render.train.SteamSmokeParticle;
@@ -85,8 +85,7 @@ public class ClientProxy {
         @SubscribeEvent
         public static void onRenderGuiPost(RenderGuiEvent.Post event) {
             if (TrainVirtualDrive.activeTrain != null) {
-                DriveConsoleOverlay.setData(TrainVirtualDrive.activeTrain.vdNotch, TrainVirtualDrive.activeTrain);
-                DriveConsoleOverlay.render(event.getGuiGraphics());
+                VirtualDriveHmi.render(event.getGuiGraphics());
             }
         }
 #endif
