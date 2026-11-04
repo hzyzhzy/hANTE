@@ -26,8 +26,10 @@ public final class VirtualDriveServerData {
 
     private static final Map<UUID, Player> DRIVING_PLAYERS = new ConcurrentHashMap<>();
     private static Field playerRidingCoolDownField;
-    private static boolean playerRidingCoolDownFieldTried;
-    private static boolean playerRidingCoolDownFieldLogged;
+    private static Field playerRidingRouteField;
+    private static Field playerSeatsField;
+    private static Field playerSeatCoolDownsField;
+    private static boolean fieldsTried;
 
     private VirtualDriveServerData() {
     }
@@ -59,18 +61,49 @@ public final class VirtualDriveServerData {
      * player.stopRiding() when it reaches zero. Holding it at 2 keeps the virtual-drive
      * player attached. Reflection is used so no new Mixin is added at startup.
      */
-    private static void holdRidingCooldown(Player player) {
-        if (!playerRidingCoolDownFieldTried) {
-            playerRidingCoolDownFieldTried = true;
-            try {
-                playerRidingCoolDownField = RailwayDataCoolDownModule.class.getDeclaredField("playerRidingCoolDown");
-                playerRidingCoolDownField.setAccessible(true);
-                cn.zbx1425.mtrsteamloco.Main.LOGGER.info("[VD] server cooldown field attached");
-            } catch (Throwable t) {
-                playerRidingCoolDownField = null;
-                cn.zbx1425.mtrsteamloco.Main.LOGGER.warn("[VD] server cooldown field unavailable", t);
-            }
+    private static void initFields() {
+        if (fieldsTried) return;
+        fieldsTried = true;
+        try {
+            Class<?> type = RailwayDataCoolDownModule.class;
+            playerRidingCoolDownField = type.getDeclaredField("playerRidingCoolDown");
+            playerRidingCoolDownField.setAccessible(true);
+            playerRidingRouteField = type.getDeclaredField("playerRidingRoute");
+            playerRidingRouteField.setAccessible(true);
+            playerSeatsField = type.getDeclaredField("playerSeats");
+            playerSeatsField.setAccessible(true);
+            playerSeatCoolDownsField = type.getDeclaredField("playerSeatCoolDowns");
+            playerSeatCoolDownsField.setAccessible(true);
+            cn.zbx1425.mtrsteamloco.Main.LOGGER.info("[VD] server riding fields attached");
+        } catch (Throwable t) {
+            cn.zbx1425.mtrsteamloco.Main.LOGGER.warn("[VD] server riding fields unavailable", t);
         }
+    }
+
+    private static void clearRidingState(Player player) {
+        initFields();
+        try {
+            RailwayData data = RailwayData.getInstance(player.level());
+            if (data == null) return;
+            Object module = data.railwayDataCoolDownModule;
+            removeFromMap(player, module, playerRidingCoolDownField);
+            removeFromMap(player, module, playerRidingRouteField);
+            removeFromMap(player, module, playerSeatsField);
+            removeFromMap(player, module, playerSeatCoolDownsField);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static void removeFromMap(Player player, Object module, Field field) throws IllegalAccessException {
+        if (field == null) return;
+        Object map = field.get(module);
+        if (map instanceof Map<?, ?>) {
+            ((Map<?, ?>) map).remove(player);
+        }
+    }
+
+    private static void holdRidingCooldown(Player player) {
+        initFields();
         if (playerRidingCoolDownField == null) return;
         try {
             RailwayData data = RailwayData.getInstance(player.level());
@@ -87,28 +120,40 @@ public final class VirtualDriveServerData {
 
     public static void updatePlayerInVirtualDrive(Player player, boolean isDriving) {
         if (isDriving) {
-            player.fallDistance = 0.0F;
-            player.setNoGravity(true);
-            player.noPhysics = true;
-            player.getAbilities().mayfly = true;
-            if (player instanceof ServerPlayer serverPlayer) {
-                serverPlayer.onUpdateAbilities();
-                if (player.getVehicle() != null) {
-                    player.stopRiding();
+            try {
+                if (player.isPassenger()) player.stopRiding();
+                clearRidingState(player);
+                player.fallDistance = 0.0F;
+                player.setNoGravity(true);
+                player.noPhysics = true;
+                player.getAbilities().mayfly = true;
+                if (player instanceof ServerPlayer serverPlayer) {
+                    serverPlayer.onUpdateAbilities();
                 }
+                holdRidingCooldown(player);
+                DRIVING_PLAYERS.put(player.getUUID(), player);
+                Registry.setInTeleportationState(player, true);
+                cn.zbx1425.mtrsteamloco.Main.LOGGER.info("[VD] server enter player={}", player.getUUID());
+            } catch (Throwable t) {
+                cn.zbx1425.mtrsteamloco.Main.LOGGER.warn("[VD] server enter failed", t);
             }
-            holdRidingCooldown(player);
-            DRIVING_PLAYERS.put(player.getUUID(), player);
-            Registry.setInTeleportationState(player, true);
         } else {
             DRIVING_PLAYERS.remove(player.getUUID());
-            player.setNoGravity(false);
-            player.noPhysics = false;
-            if (player instanceof ServerPlayer serverPlayer) {
-                serverPlayer.gameMode.getGameModeForPlayer().updatePlayerAbilities(player.getAbilities());
-                serverPlayer.onUpdateAbilities();
+            try {
+                if (player.isPassenger()) player.stopRiding();
+                clearRidingState(player);
+            } catch (Throwable t) {
+                cn.zbx1425.mtrsteamloco.Main.LOGGER.warn("[VD] server riding cleanup failed", t);
+            } finally {
+                player.setNoGravity(false);
+                player.noPhysics = false;
+                if (player instanceof ServerPlayer serverPlayer) {
+                    serverPlayer.gameMode.getGameModeForPlayer().updatePlayerAbilities(player.getAbilities());
+                    serverPlayer.onUpdateAbilities();
+                }
+                Registry.setInTeleportationState(player, false);
+                cn.zbx1425.mtrsteamloco.Main.LOGGER.info("[VD] server exit player={}", player.getUUID());
             }
-            Registry.setInTeleportationState(player, false);
         }
     }
 }

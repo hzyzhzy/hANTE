@@ -341,6 +341,12 @@ public class TrainVirtualDrive extends TrainClient {
          stopping = true;
          PacketVirtualDrive.sendVirtualDriveC2S(false);
          activeTrain = null;
+         net.minecraft.client.player.LocalPlayer localPlayer = Minecraft.getInstance().player;
+         if (localPlayer != null) {
+            localPlayer.stopRiding();
+            localPlayer.setNoGravity(false);
+            localPlayer.noPhysics = false;
+         }
          train.isRemoved = true;
          pendingRemove = train;
          hiddenTrainId = 0;

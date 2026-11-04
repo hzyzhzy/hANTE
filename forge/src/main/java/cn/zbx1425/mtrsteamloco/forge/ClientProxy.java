@@ -146,6 +146,11 @@ public class ClientProxy {
                                                     TrainVirtualDrive.activeTrain.atpEmergencyBrake = false;
                                                 }
                                                 return 1;
+                                            }))
+                                    .then(Commands.literal("reset")
+                                            .executes(context -> {
+                                                cn.zbx1425.mtrsteamloco.network.PacketVirtualDrive.sendVirtualDriveC2S(false);
+                                                return 1;
                                             })))
                             .then(Commands.literal("stat")
                                     .executes(context -> {
