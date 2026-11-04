@@ -63,6 +63,11 @@ public class TrainVirtualDrive extends TrainClient {
       }));
 
       this.sourceTrain = trainClient;
+      try {
+         ((cn.zbx1425.mtrsteamloco.mixin.TrainAccessor) (Object) this)
+                 .setMaxManualSpeed(RailType.values().length - 1);
+      } catch (Throwable ignored) {
+      }
       float pathMax = 0.0F;
       for (PathData path : this.path) {
          RailType type = path.rail.railType;
@@ -87,7 +92,7 @@ public class TrainVirtualDrive extends TrainClient {
       AnnouncementCallback lightRailAnnouncementCallback
    ) {
       this.isCurrentlyManual = true;
-      this.manualNotch = 114514;
+      this.manualNotch = 0;
       this.nextStoppingIndex = this.path.size() - 1;
       if (this.vdNotch > 0) this.doorTarget = false;
       super.simulateTrain(world, ticksElapsed, speedCallback, announcementCallback, lightRailAnnouncementCallback);
