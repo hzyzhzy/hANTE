@@ -1,6 +1,6 @@
 # hANTE
 
-<p align="center">
+<p align="left">
   <img src="docs/hante-icon.png" alt="hANTE" width="320">
 </p>
 
