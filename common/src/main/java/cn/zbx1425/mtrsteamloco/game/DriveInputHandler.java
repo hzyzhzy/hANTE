@@ -18,11 +18,15 @@ public final class DriveInputHandler {
     private static int lastKey;
     private static int lastTick;
     private static int cooldown;
+    private static int lastInputTick = -1;
 
     private DriveInputHandler() {
     }
 
     public static void tick() {
+        int gameTick = (int) mtr.MTRClient.getGameTick();
+        if (gameTick == lastInputTick) return;
+        lastInputTick = gameTick;
         TrainVirtualDrive train = TrainVirtualDrive.activeTrain;
         if (train == null) {
             lastKey = 0;

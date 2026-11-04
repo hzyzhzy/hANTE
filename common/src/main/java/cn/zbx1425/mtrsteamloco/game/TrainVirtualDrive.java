@@ -43,6 +43,8 @@ public class TrainVirtualDrive extends TrainClient {
    public double PROG_TOLERANCE = 5.0;
    public static TrainVirtualDrive activeTrain;
    public static boolean stopping;
+   public static long hiddenTrainId;
+   public static TrainVirtualDrive pendingRemove;
    private TrainClient sourceTrain;
 
    public TrainVirtualDrive(TrainClient trainClient) {
@@ -264,34 +266,39 @@ public class TrainVirtualDrive extends TrainClient {
    public static boolean startDrivingRidingTrain() {
       if (activeTrain != null) {
          return false;
-      } else {
-         Player player = Minecraft.getInstance().player;
-         if (player == null) {
-            return false;
-         } else {
-            for (TrainClient train : ClientData.TRAINS) {
-               if (train.isPlayerRiding(player)) {
-                  stopDriving();
-                  stopping = false;
-                  activeTrain = new TrainVirtualDrive(train);
-                  activeTrain.railProgress = train.getRailProgress();
-                  activeTrain.speed = train.getSpeed();
-                  activeTrain.vehicleRidingClient
-                     .startRiding(
-                        player.getUUID(),
-                        0.5F,
-                        train.vehicleRidingClient.getPercentageZ(player.getUUID())
-                     );
-                  PacketVirtualDrive.sendVirtualDriveC2S(true);
-                  ((cn.zbx1425.mtrsteamloco.data.VehicleRidingClientExtraSupplier) train.vehicleRidingClient).removeRider(player.getUUID());
-                  Minecraft.getInstance().execute(() -> ClientData.TRAINS.add(activeTrain));
-                  return true;
-               }
-            }
-
-            return false;
+      }
+      Player player = Minecraft.getInstance().player;
+      if (player == null) {
+         return false;
+      }
+      TrainClient source = null;
+      for (TrainClient train : ClientData.TRAINS) {
+         if (train.isPlayerRiding(player)) {
+            source = train;
+            break;
          }
       }
+      if (source == null) {
+         return false;
+      }
+
+      stopDriving();
+      stopping = false;
+      hiddenTrainId = source.id;
+      activeTrain = new TrainVirtualDrive(source);
+      activeTrain.railProgress = source.getRailProgress();
+      activeTrain.speed = source.getSpeed();
+      activeTrain.vehicleRidingClient.startRiding(
+            player.getUUID(),
+            0.5F,
+            source.vehicleRidingClient.getPercentageZ(player.getUUID())
+      );
+      PacketVirtualDrive.sendVirtualDriveC2S(true);
+      ((cn.zbx1425.mtrsteamloco.data.VehicleRidingClientExtraSupplier) source.vehicleRidingClient).removeRider(player.getUUID());
+      source.isRemoved = true;
+      ClientData.TRAINS.remove(source);
+      ClientData.TRAINS.add(activeTrain);
+      return true;
    }
 
    public static void stopDriving() {
@@ -301,12 +308,20 @@ public class TrainVirtualDrive extends TrainClient {
          PacketVirtualDrive.sendVirtualDriveC2S(false);
          activeTrain = null;
          train.isRemoved = true;
-         Minecraft.getInstance().execute(() -> ClientData.TRAINS.remove(train));
+         pendingRemove = train;
+         hiddenTrainId = 0;
       }
    }
 
    /** ClientData.deleteTrains() periodically removes client-only trains; keep the virtual one alive. */
    public static void keepAlive() {
+      if (pendingRemove != null) {
+         ClientData.TRAINS.remove(pendingRemove);
+         pendingRemove = null;
+      }
+      if (hiddenTrainId != 0) {
+         ClientData.TRAINS.removeIf(train -> train.id == hiddenTrainId);
+      }
       if (activeTrain != null && !stopping) {
          activeTrain.isRemoved = false;
          if (!ClientData.TRAINS.contains(activeTrain)) {

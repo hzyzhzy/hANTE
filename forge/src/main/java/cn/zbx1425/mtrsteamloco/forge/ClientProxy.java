@@ -86,6 +86,7 @@ public class ClientProxy {
         @SubscribeEvent
         public static void onRenderGuiPost(RenderGuiEvent.Post event) {
             if (TrainVirtualDrive.activeTrain != null) {
+                DriveInputHandler.tick();
                 VirtualDriveHmi.render(event.getGuiGraphics());
             }
         }
