@@ -77,6 +77,7 @@ public class ClientProxy {
         @SubscribeEvent
         public static void onClientTick(TickEvent.ClientTickEvent event) {
             if (event.phase == TickEvent.Phase.END) {
+                TrainVirtualDrive.keepAlive();
                 DriveInputHandler.tick();
             }
         }

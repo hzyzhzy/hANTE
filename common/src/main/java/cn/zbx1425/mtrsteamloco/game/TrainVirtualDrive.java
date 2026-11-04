@@ -42,6 +42,7 @@ public class TrainVirtualDrive extends TrainClient {
    public float weightPerCar = 27000.0F;
    public double PROG_TOLERANCE = 5.0;
    public static TrainVirtualDrive activeTrain;
+   public static boolean stopping;
    private TrainClient sourceTrain;
 
    public TrainVirtualDrive(TrainClient trainClient) {
@@ -271,6 +272,7 @@ public class TrainVirtualDrive extends TrainClient {
             for (TrainClient train : ClientData.TRAINS) {
                if (train.isPlayerRiding(player)) {
                   stopDriving();
+                  stopping = false;
                   activeTrain = new TrainVirtualDrive(train);
                   activeTrain.railProgress = train.getRailProgress();
                   activeTrain.speed = train.getSpeed();
@@ -294,12 +296,22 @@ public class TrainVirtualDrive extends TrainClient {
 
    public static void stopDriving() {
       if (activeTrain != null) {
+         TrainVirtualDrive train = activeTrain;
+         stopping = true;
          PacketVirtualDrive.sendVirtualDriveC2S(false);
-         activeTrain.isRemoved = true;
-         Minecraft.getInstance().execute(() -> {
-            ClientData.TRAINS.remove(activeTrain);
-            activeTrain = null;
-         });
+         activeTrain = null;
+         train.isRemoved = true;
+         Minecraft.getInstance().execute(() -> ClientData.TRAINS.remove(train));
+      }
+   }
+
+   /** ClientData.deleteTrains() periodically removes client-only trains; keep the virtual one alive. */
+   public static void keepAlive() {
+      if (activeTrain != null && !stopping) {
+         activeTrain.isRemoved = false;
+         if (!ClientData.TRAINS.contains(activeTrain)) {
+            ClientData.TRAINS.add(activeTrain);
+         }
       }
    }
 
