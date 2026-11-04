@@ -315,7 +315,7 @@ public class TrainVirtualDrive extends TrainClient {
       stopping = false;
       hiddenTrainId = source.id;
       activeTrain = new TrainVirtualDrive(source);
-      activeTrain.atpCutout = true;
+      activeTrain.atpCutout = false;
       activeTrain.doorTarget = false;
       cn.zbx1425.mtrsteamloco.Main.LOGGER.info("[VD] start sourceId={} speed={} progress={}", source.id, source.getSpeed(), source.getRailProgress());
       activeTrain.railProgress = source.getRailProgress();
