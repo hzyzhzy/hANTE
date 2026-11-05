@@ -105,13 +105,14 @@ ATP 默认开启；超过 ATP 红针会触发紧急制动。需要完全手动�
 - 移植 NeoMTR 内置 NTE 的增强型手动驾驶（HMI、ATP、虚拟列车、指令与教程见上文）；
 - 修复退出虚拟驾驶后的浮空、无法跳跃/潜行、`/kill` 无效、偶尔被传回列车的问题；
 - 修复停站接管时车门联锁导致无法起步，以及基础模拟把速度夹在 20 km/h 的问题；
-- 更新模组名称、作者、主页、MIT 许可证与 HZYMTR 分支图标。
+- 更新模组名称、作者、主页、MIT 许可证与 HZYMTR 分支图标；
+- 新增 Forge + Fabric 双加载器通用包（Fabric 支持为实验性）。
 
 ## 兼容性
 
 - Minecraft **1.20.1**
-- Forge
-- MTR **3**（已在 YMTR 3.6.3 测试）
+- Forge / Fabric 通用 jar（Fabric 为实验性，需要 Fabric API + MTR Fabric）
+- MTR **3**（Forge 侧已在 YMTR 3.6.3 测试）
 - 多人虚拟驾驶要求客户端和服务端使用同一个 jar
 
 ## 构建
@@ -124,7 +125,10 @@ $env:GRADLE_USER_HOME = "<你的 Gradle 缓存路径>"
 .\\gradlew.bat build
 ```
 
-产物：`forge/build/libs/forge-<版本>+1.20.1.jar`
+产物：
+- Forge：`forge/build/libs/forge-<版本>+1.20.1.jar`
+- Fabric：`fabric/build/libs/fabric-<版本>+1.20.1.jar`
+- 双加载器：`build/MTR-hANTE-<版本>+1.20.1-universal.jar`
 
 已知构建陷阱：
 
@@ -270,13 +274,14 @@ Current version: **1.1.3**, based on upstream `alpha` at `0506691f`.
   onto a train after exiting virtual driving;
 - fixed the station door interlock preventing departure and the base simulation clamping
   speed to 20 km/h;
-- updated mod name, authors, homepage, MIT license, and icon for the HZYMTR branch.
+- updated mod name, authors, homepage, MIT license, and icon for the HZYMTR branch;
+- added a Forge + Fabric universal jar (Fabric support is experimental).
 
 ## Compatibility
 
 - Minecraft **1.20.1**
-- Forge
-- MTR **3** (tested with YMTR 3.6.3)
+- Forge / Fabric universal jar (Fabric support is experimental; requires Fabric API + MTR Fabric)
+- MTR **3** (tested with YMTR 3.6.3 on Forge)
 - Client and server must use the same jar for multiplayer virtual driving
 
 ## Building
@@ -289,7 +294,10 @@ $env:GRADLE_USER_HOME = "<your Gradle cache path>"
 .\\gradlew.bat build
 ```
 
-Output: `forge/build/libs/forge-<version>+1.20.1.jar`
+Output:
+- Forge: `forge/build/libs/forge-<version>+1.20.1.jar`
+- Fabric: `fabric/build/libs/fabric-<version>+1.20.1.jar`
+- Universal: `build/MTR-hANTE-<version>+1.20.1-universal.jar`
 
 Known build traps:
 
