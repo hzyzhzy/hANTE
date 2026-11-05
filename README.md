@@ -8,7 +8,7 @@
 
 hANTE 是
 [Aphrodite's Nemo's Transit Expansion (MTR-ANTE)](https://github.com/aphrodite281/mtr-ante)
-的独立分支，面向 **Minecraft 1.20.1 / Forge** 和 **MTR 3**（包括 YMTR）。
+的独立分支，面向 **Minecraft 1.20.1 / Forge / Fabric** 和 **MTR 3**（包括 YMTR）。
 本分支侧重兼容性、驾驶/相机手感、性能，以及挑选上游修复。
 
 本仓库**不是**准备合并回上游的 PR 分支，而是一条独立维护的线路。
@@ -39,7 +39,7 @@ hANTE 恢复了该分支，并补上：
 ### 增强型手动驾驶（移植自 NeoMTR 内置 NTE）
 
 hANTE 把 [NeoMTR](https://github.com/zbx1425/NeoMTR) 内置 NTE 的
-**增强型手动驾驶**移植到了 Minecraft 1.20.1 / Forge / YMTR 3.6.3。
+**增强型手动驾驶**移植到了 Minecraft 1.20.1 / Forge / Fabric / MTR 3（YMTR 为 Forge 分支）。
 
 功能：
 
@@ -106,13 +106,13 @@ ATP 默认开启；超过 ATP 红针会触发紧急制动。需要完全手动�
 - 修复退出虚拟驾驶后的浮空、无法跳跃/潜行、`/kill` 无效、偶尔被传回列车的问题；
 - 修复停站接管时车门联锁导致无法起步，以及基础模拟把速度夹在 20 km/h 的问题；
 - 更新模组名称、作者、主页、MIT 许可证与 HZYMTR 分支图标；
-- 新增 Forge + Fabric 双加载器通用包（Fabric 支持为实验性）。
+- 新增 Forge + Fabric 双加载器通用包（Fabric 支持已可用）。
 
 ## 兼容性
 
 - Minecraft **1.20.1**
-- Forge / Fabric 通用 jar（Fabric 为实验性，需要 Fabric API + MTR Fabric）
-- MTR **3**（Forge 侧已在 YMTR 3.6.3 测试）
+- Forge / Fabric 通用 jar（需要 Fabric API + MTR Fabric）
+- MTR **3**（Forge 侧已在 YMTR 3.6.3 测试，Fabric 侧已在 MTR Fabric 测试）
 - 多人虚拟驾驶要求客户端和服务端使用同一个 jar
 
 ## 构建
@@ -129,6 +129,8 @@ $env:GRADLE_USER_HOME = "<你的 Gradle 缓存路径>"
 - Forge：`forge/build/libs/forge-<版本>+1.20.1.jar`
 - Fabric：`fabric/build/libs/fabric-<版本>+1.20.1.jar`
 - 双加载器：`build/MTR-hANTE-<版本>+1.20.1-universal.jar`
+
+发布时只保留双加载器 universal 包，Forge / Fabric 单独产物仅用于本地构建。
 
 已知构建陷阱：
 
@@ -159,7 +161,7 @@ MTR-ANTE（原名 MTRSteamLoco）由 **Zbx1425** 创建于
 
 hANTE is an independent fork of
 [Aphrodite's Nemo's Transit Expansion (MTR-ANTE)](https://github.com/aphrodite281/mtr-ante),
-targeting **Minecraft 1.20.1 / Forge** and **MTR 3** (including YMTR).
+targeting **Minecraft 1.20.1 / Forge / Fabric** and **MTR 3** (including YMTR).
 It focuses on compatibility, driving/camera feel, performance, and selected upstream fixes.
 
 This repository is **not** a pull-request branch intended to be merged upstream; it is a
@@ -195,8 +197,8 @@ usually a **map topology** issue, for example:
 ### Enhanced manual driving (ported from NeoMTR's built-in NTE)
 
 hANTE ports the **enhanced manual driving** feature from
-[NeoMTR](https://github.com/zbx1425/NeoMTR)'s built-in NTE to Minecraft 1.20.1 / Forge /
-YMTR 3.6.3.
+[NeoMTR](https://github.com/zbx1425/NeoMTR)'s built-in NTE to Minecraft 1.20.1 / Forge / Fabric / MTR 3
+(YMTR is a Forge branch).
 
 Features:
 
@@ -275,13 +277,13 @@ Current version: **1.1.4**, based on upstream `alpha` at `0506691f`.
 - fixed the station door interlock preventing departure and the base simulation clamping
   speed to 20 km/h;
 - updated mod name, authors, homepage, MIT license, and icon for the HZYMTR branch;
-- added a Forge + Fabric universal jar (Fabric support is experimental).
+- added a Forge + Fabric universal jar (Fabric support is available).
 
 ## Compatibility
 
 - Minecraft **1.20.1**
-- Forge / Fabric universal jar (Fabric support is experimental; requires Fabric API + MTR Fabric)
-- MTR **3** (tested with YMTR 3.6.3 on Forge)
+- Forge / Fabric universal jar (requires Fabric API + MTR Fabric)
+- MTR **3** (tested with YMTR 3.6.3 on Forge and with MTR Fabric)
 - Client and server must use the same jar for multiplayer virtual driving
 
 ## Building
@@ -298,6 +300,8 @@ Output:
 - Forge: `forge/build/libs/forge-<version>+1.20.1.jar`
 - Fabric: `fabric/build/libs/fabric-<version>+1.20.1.jar`
 - Universal: `build/MTR-hANTE-<version>+1.20.1-universal.jar`
+
+Releases ship only the universal jar; the loader-specific jars are local build outputs.
 
 Known build traps:
 
