@@ -4,6 +4,8 @@
   <img src="docs/hante-icon.png" alt="hANTE" width="320">
 </p>
 
+<p align="left"><a href="#english">English</a> | 中文</p>
+
 基于 [Aphrodite's Nemo's Transit Expansion (MTR-ANTE)](https://github.com/aphrodite281/mtr-ante)
 的独立分支，针对 **YMTR**（Minecraft Transit Railway 的第三方分支）做了兼容与手感调整，
 并移植了上游的部分修复。
@@ -161,3 +163,169 @@ git cherry-pick <需要的提交>
 - 上游文档：https://aphrodite281.github.io/mtr-ante/#
 - 上游 Modrinth：https://modrinth.com/mod/mtr-ante
 - 依赖的 MTR 本体：https://github.com/jonafanho/Minecraft-Transit-Railway
+
+---
+
+# English
+
+hANTE is an independent fork of
+[Aphrodite's Nemo's Transit Expansion (MTR-ANTE)](https://github.com/aphrodite281/mtr-ante),
+targeting **Minecraft 1.20.1 / Forge** and **MTR 3** (including YMTR).
+It focuses on compatibility, driving/camera feel, performance, and selected upstream fixes.
+
+This repository is **not** a pull-request branch intended to be merged upstream; it is a
+separately maintained line. The full upstream history is preserved so useful fixes can be
+cherry-picked at any time.
+
+## Differences from upstream
+
+### Cross-airport airplane path fix
+
+ANTE (and early hANTE 1.1.2 builds) can report
+`gui.mtr.path_not_found_between` when generating a path between two airports. The cause is
+that `BetterPathFinder.addPathPart` was missing the runway-takeoff branch used by the
+original MTR/YMTR `PathFinder`: when a train is on a `RailType.RUNWAY` position with exactly
+one connection, the original adds all runway endpoints as jump targets. ANTE's rewrite did
+not, so an airplane could not leave the runway endpoint and enter the airborne segment.
+
+hANTE restores that branch and adds:
+
+- an `airborne` flag on `PathPart` so runway logic is not re-triggered in the air;
+- skipping the current runway endpoint and already visited positions to prevent self-loops;
+- 8-direction turn-step calculation in `addAirplanePath` (no `RailAngle` enum identity
+  comparison);
+- null guards for `lastConnections`, `newConnections`, and `calculateNewDirection`.
+
+The main route can now be generated correctly. If a depot still fails as a whole, it is
+usually a **map topology** issue, for example:
+
+- a one-way runway supports only one direction (no takeoff/landing runway for the return leg);
+- a completely isolated siding inside the depot area makes the depot take the minimum
+  successful segment count across all sidings.
+
+### Enhanced manual driving (ported from NeoMTR's built-in NTE)
+
+hANTE ports the **enhanced manual driving** feature from
+[NeoMTR](https://github.com/zbx1425/NeoMTR)'s built-in NTE to Minecraft 1.20.1 / Forge /
+YMTR 3.6.3.
+
+Features:
+
+- `/mtrnte virtdrive` takes over the train you are currently riding;
+- the original `drive_hmi.png` cab display: round speedometer, ATP yellow/red needles,
+  target speed and target-distance bar;
+- traction/brake notches, door interlock, platform-door alignment information, and ATP
+  overspeed emergency braking;
+- the virtual train hides the original one, avoiding two overlapping train fronts;
+- on exit, MTR teleport/seat state is cleaned up to prevent floating, disabled jump/sneak,
+  ineffective `/kill`, or being teleported back onto a train;
+- multiplayer support when client and server use the same jar.
+
+Tutorial:
+
+1. Install the **same hANTE jar on both client and server**, then restart.
+2. Right-click to sit in an **automatically running** train.
+3. Run:
+   ```
+   /mtrnte virtdrive
+   ```
+4. Default controls (MTR 3.6.3):
+   - `↑` / `W`: accelerate
+   - `↓` / `S`: brake
+   - `←`: toggle doors
+   - `X`: neutral / coast
+   - hold sneak for about 1.5 seconds: exit virtual driving
+5. Other commands:
+   - `/mtrnte virtdrive atpcutout`: cut out / restore ATP (ATP is enabled by default);
+   - `/mtrnte virtdrive reset`: force-clear a stuck teleport/seat state after exiting.
+6. When taking over at a station, applying power automatically closes the doors; wait for
+   the door animation, then the train can move.
+
+ATP is enabled by default; exceeding the ATP red needle triggers emergency braking. Use
+`atpcutout` when full manual control is desired.
+
+### Camera and view
+
+- **Camera inertia**: `CameraInertia` + `CameraAccessor` bake the inertia offset into the
+  camera position.
+- **View roll**: `Rolling` supports camera and passenger-position roll with the train; camera
+  roll can be disabled separately.
+- **Car stability**: `VehicleRidingClientMixin` was reworked so cars use a camera position
+  without the inertia offset — fixing the "camera shakes inside the car while the car is
+  pushed around the screen" problem.
+- **Roll no longer pushes the camera down** (1.1.2): `Rolling.applyRolling` restores the Y
+  displacement caused by roll and keeps only the horizontal displacement.
+- **Inertia is no longer reset incorrectly** (1.1.2): "roll zero" and "left the train" use
+  separate timeouts.
+- **Cornering uses a centrifugal feel** (1.1.2): lateral motion is critically damped with no
+  overshoot; lateral gain was increased from 8 to 26.
+
+### YMTR compatibility
+
+- `YmtrAnteFallbackMixin` disables YMTR's ANTE fallback rail-rendering path. That path calls
+  `Rail.getPosition` twice per rail per frame and was measured to reduce FPS to about 1/5.
+
+### Bug fixes
+
+| Problem | Fix |
+| --- | --- |
+| Cross-airport airplane path cannot be created | Restore the runway-takeoff branch in `addPathPart` (see above) |
+| Cable car cannot connect at some angles | `RailCalculator.calculate` no longer filters results with `Section.isValid()` — a NaN in any parameter discarded the whole result |
+
+## Version
+
+Current version: **1.1.3**, based on upstream `alpha` at `0506691f`.
+
+### 1.1.3 highlights
+
+- Fixed the missing runway-takeoff segment for cross-airport airplane pathfinding;
+- ported NeoMTR's built-in NTE enhanced manual driving (HMI, ATP, virtual train, commands and
+  tutorial above);
+- fixed floating / disabled jump and sneak / ineffective `/kill` / occasional teleport back
+  onto a train after exiting virtual driving;
+- fixed the station door interlock preventing departure and the base simulation clamping
+  speed to 20 km/h;
+- updated mod name, authors, homepage, MIT license, and icon for the HZYMTR branch.
+
+## Compatibility
+
+- Minecraft **1.20.1**
+- Forge
+- MTR **3** (tested with YMTR 3.6.3)
+- Client and server must use the same jar for multiplayer virtual driving
+
+## Building
+
+Requires **JDK 17** (not 21).
+
+```powershell
+$env:JAVA_HOME = "<your JDK 17 path>"
+$env:GRADLE_USER_HOME = "<your Gradle cache path>"
+.\\gradlew.bat build
+```
+
+Output: `forge/build/libs/forge-<version>+1.20.1.jar`
+
+Known build traps:
+
+1. Do **not** use `--offline` — the first build needs network access for parchment mappings.
+2. Use **JDK 17**. JDK 19+ triggers Loom's LWJGL upgrade flow and can fail with
+   `Cannot mutate content repository descriptor 'LoomLocalRemappedMods(...)' after repository has been used`.
+3. If `:forge:remapJar` reports
+   `Jar ... already contains an access transformer`, run a clean build.
+
+## License and credits
+
+Licensed under the MIT license inherited from upstream; see [LICENSE](LICENSE).
+
+MTR-ANTE (formerly MTRSteamLoco) was created by **Zbx1425** at
+[Teacon 2022](https://teacon.cn) and is maintained by **Aphrodite**.
+This fork is maintained by **HZYZHZY** and **Ch1hayaAnonQWQ**.
+
+The enhanced manual driving implementation is ported from
+[NeoMTR](https://github.com/zbx1425/NeoMTR)'s built-in NTE.
+
+- Upstream repository: https://github.com/aphrodite281/mtr-ante
+- Upstream documentation: https://aphrodite281.github.io/mtr-ante/#
+- Upstream Modrinth: https://modrinth.com/mod/mtr-ante
+- MTR: https://github.com/jonafanho/Minecraft-Transit-Railway
