@@ -30,14 +30,18 @@ jobs:
         run: rm -rf ~/.gradle/caches/modules-2
 
       - name: Build 1.20.1 universal jar
-        run: gradle setupLibrary build -PbuildVersion=1.20.1 --no-daemon --debug
+        run: gradle setupLibrary build mergeJars -PbuildVersion=1.20.1 --no-daemon
 
       - name: Prepare universal artifact
         run: |
           MOD_VERSION=$(grep "mod_version=" gradle.properties | cut -d'=' -f2)
-          SRC="build/MTR-ANTE-${MOD_VERSION}+1.20.1.jar"
+          SRC=$(find build -maxdepth 2 -type f -name 'MTR-ANTE-*.jar' | head -n 1)
+          if [ -z "$SRC" ]; then
+            echo "No merged jar found under build/"
+            find build -maxdepth 2 -type f -name '*.jar' -print
+            exit 1
+          fi
           DST="build/MTR-hANTE-${MOD_VERSION}+1.20.1-universal.jar"
-          test -f "$SRC"
           mv "$SRC" "$DST"
           ls -lh "$DST"
 
