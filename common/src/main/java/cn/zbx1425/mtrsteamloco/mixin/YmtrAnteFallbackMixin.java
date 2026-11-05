@@ -44,7 +44,7 @@ public class YmtrAnteFallbackMixin {
 
     private static boolean ante$logged = false;
 
-    @Inject(method = "isAnteInstalled", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = "isAnteInstalled", at = @At("HEAD"), cancellable = true, remap = false, require = 0)
     private static void ante$disableYmtrAnteDetection(CallbackInfoReturnable<Boolean> cir) {
         if (!ante$logged) {
             ante$logged = true;
