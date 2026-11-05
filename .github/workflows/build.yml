@@ -41,7 +41,7 @@ jobs:
             find build -maxdepth 2 -type f -name '*.jar' -print
             exit 1
           fi
-          DST="build/MTR-hANTE-${MOD_VERSION}+1.20.1-universal.jar"
+          DST="build/MTR-hANTE-universal.jar"
           mv "$SRC" "$DST"
           ls -lh "$DST"
 
@@ -49,5 +49,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: MTR-hANTE-universal
-          path: build/MTR-hANTE-*-universal.jar
+          path: build/MTR-hANTE-universal.jar
           compression-level: 9
