@@ -5,6 +5,11 @@ import cn.zbx1425.mtrsteamloco.Main;
 import cn.zbx1425.mtrsteamloco.MainClient;
 import cn.zbx1425.mtrsteamloco.gui.ConfigScreen;
 import cn.zbx1425.mtrsteamloco.gui.ScriptDebugOverlay;
+import cn.zbx1425.mtrsteamloco.gui.VirtualDriveHmi;
+import cn.zbx1425.mtrsteamloco.game.DriveInputHandler;
+import cn.zbx1425.mtrsteamloco.game.TrainVirtualDrive;
+import cn.zbx1425.mtrsteamloco.network.PacketVirtualDrive;
+import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import cn.zbx1425.mtrsteamloco.render.RenderUtil;
 import cn.zbx1425.mtrsteamloco.render.train.SteamSmokeParticle;
 import mtr.mappings.Text;
@@ -64,6 +69,29 @@ public class MainFabricClient implements ClientModInitializer {
                                         ScriptContextManager.clearDebugInfo();
                                         return 1;
                                     }))
+							.then(ClientCommandManager.literal("virtdrive")
+									.executes(context -> {
+										if (!TrainVirtualDrive.startDrivingRidingTrain()) {
+											throw new SimpleCommandExceptionType(Text.literal("你需要先坐在一辆自动运行的列车上")).create();
+										}
+										return 1;
+									})
+									.then(ClientCommandManager.literal("atpcutout")
+											.executes(context -> {
+												if (TrainVirtualDrive.activeTrain == null) {
+													throw new SimpleCommandExceptionType(Text.literal("当前没有正在手动驾驶的列车")).create();
+												}
+												TrainVirtualDrive.activeTrain.atpCutout = !TrainVirtualDrive.activeTrain.atpCutout;
+												if (TrainVirtualDrive.activeTrain.atpCutout) {
+													TrainVirtualDrive.activeTrain.atpEmergencyBrake = false;
+												}
+												return 1;
+											}))
+									.then(ClientCommandManager.literal("reset")
+											.executes(context -> {
+												PacketVirtualDrive.sendVirtualDriveC2S(false);
+												return 1;
+											})))
 							.then(ClientCommandManager.literal("stat")
 									.executes(context -> {
 										Minecraft.getInstance().tell(() -> {
@@ -83,6 +111,11 @@ public class MainFabricClient implements ClientModInitializer {
 #endif
 
 		HudRenderCallback.EVENT.register((guiGraphics, delta) -> {
+			if (TrainVirtualDrive.activeTrain != null) {
+				TrainVirtualDrive.keepAlive();
+				DriveInputHandler.tick();
+				VirtualDriveHmi.render(guiGraphics);
+			}
 			ScriptDebugOverlay.render(guiGraphics);
 		});
 
