@@ -97,9 +97,9 @@ ATP 默认开启；超过 ATP 红针会触发紧急制动。需要完全手动�
 
 ## 版本
 
-当前版本：**1.1.3**，基线为上游 `alpha` 的 `0506691f`。
+当前版本：**1.1.4**，基线为上游 `alpha` 的 `0506691f`。
 
-### 1.1.3 主要变更
+### 1.1.4 主要变更
 
 - 修复跨机场飞机路径缺少跑道起飞段的问题；
 - 移植 NeoMTR 内置 NTE 的增强型手动驾驶（HMI、ATP、虚拟列车、指令与教程见上文）；
@@ -263,9 +263,9 @@ ATP is enabled by default; exceeding the ATP red needle triggers emergency braki
 
 ## Version
 
-Current version: **1.1.3**, based on upstream `alpha` at `0506691f`.
+Current version: **1.1.4**, based on upstream `alpha` at `0506691f`.
 
-### 1.1.3 highlights
+### 1.1.4 highlights
 
 - Fixed the missing runway-takeoff segment for cross-airport airplane pathfinding;
 - ported NeoMTR's built-in NTE enhanced manual driving (HMI, ATP, virtual train, commands and

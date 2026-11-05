@@ -1,5 +1,4 @@
 {
-    "modmenu.descriptionTranslation.mtrsteamloco": "Экспериментальные расширения для мода MTR, созданные Zbx1425 и Aphrodite. Некоторые функции могут быть добавлены в MTR в будущем.",
     "block.mtrsteamloco.departure_bell": "Звонок отправления",
     "block.mtrsteamloco.direct_node": "Прямой узел",
     "block.mtrsteamloco.statistic_turnstile": "Турникет подсчёта посетителей",

@@ -1,5 +1,4 @@
 {
-    "modmenu.descriptionTranslation.mtrsteamloco": "Zbx1425와 Aphrodite가 제작한 MTR 모드용 실험적 확장 기능입니다. 일부 기능은 추후 MTR에 통합될 수 있습니다.",
     "block.mtrsteamloco.departure_bell": "발차 벨",
     "block.mtrsteamloco.direct_node": "직선 노드",
     "block.mtrsteamloco.statistic_turnstile": "방문자 통계 개찰구",

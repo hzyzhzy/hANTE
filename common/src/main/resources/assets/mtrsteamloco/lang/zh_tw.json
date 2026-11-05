@@ -1,5 +1,4 @@
 {
-    "modmenu.descriptionTranslation.mtrsteamloco": "由 Zbx1425 與 Aphrodite 製作用於 MTR 模組的實驗性擴充功能。部分功能未來可能整合至 MTR 主模組。",
     "block.mtrsteamloco.departure_bell": "發車鈴",
     "block.mtrsteamloco.direct_node": "直線節點",
     "block.mtrsteamloco.statistic_turnstile": "訪客統計閘機",

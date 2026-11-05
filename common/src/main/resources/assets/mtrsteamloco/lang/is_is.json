@@ -1,5 +1,4 @@
 {
-    "modmenu.descriptionTranslation.mtrsteamloco": "Tilraunaviðbót fyrir MTR forritið smíðuð af Zbx1425 og Aphrodite. Sumar þessara eiginleika gætu verið bætt við MTR í framtíðinni.",
     "block.mtrsteamloco.departure_bell": "Brottfararbjalla",
     "block.mtrsteamloco.direct_node": "Bein hnútur",
     "block.mtrsteamloco.statistic_turnstile": "Gestamælingar hlið",
