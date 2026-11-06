@@ -108,8 +108,10 @@ public class BlockEntityEyeCandyRenderer extends BlockEntityRendererMapper<Block
             
             Matrix4f candyPose = worldPose.copy();
             candyPose.mul(blockEntity.getBaseMatrix());
-            if (prop.model != null) {
-                MainClient.drawScheduler.enqueue(prop.model, candyPose, lightToUse);
+            ModelCluster candyModel = prop.getModel();
+            if (candyModel != null) {
+                prop.touch();
+                MainClient.drawScheduler.enqueue(candyModel, candyPose, lightToUse);
             }
             if (prop.script != null && blockEntity.scriptContext != null) {
                 synchronized (blockEntity.scriptContext) {

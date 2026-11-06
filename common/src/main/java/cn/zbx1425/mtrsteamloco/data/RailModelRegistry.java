@@ -2,6 +2,7 @@ package cn.zbx1425.mtrsteamloco.data;
 
 import cn.zbx1425.mtrsteamloco.Main;
 import cn.zbx1425.mtrsteamloco.MainClient;
+import cn.zbx1425.mtrsteamloco.ClientConfig;
 import cn.zbx1425.mtrsteamloco.render.integration.MtrModelRegistryUtil;
 import cn.zbx1425.sowcer.math.Vector3f;
 import cn.zbx1425.sowcer.model.Model;
@@ -31,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Supplier;
 
 public class RailModelRegistry {
 
@@ -101,19 +103,22 @@ public class RailModelRegistry {
         }
         
         RawModel rawModel = null;
+        Supplier<RawModel> lazyRawModelSupplier = null;
 
         if (obj.has("model")) {
-            rawModel = MainClient.modelManager.loadRawModel(resourceManager,
-                    new ResourceLocation(obj.get("model").getAsString()), MainClient.atlasManager).copy();
-
-            if (obj.has("textureId")) {
-                rawModel.replaceTexture("default.png", new ResourceLocation(obj.get("textureId").getAsString()));
+            if (ClientConfig.experimentalLazyRailModels) {
+                lazyRawModelSupplier = () -> {
+                    try {
+                        return loadRawModel(resourceManager, key, obj);
+                    } catch (Exception ex) {
+                        Main.LOGGER.error("Failed loading lazy rail model: " + key, ex);
+                        MtrModelRegistryUtil.recordLoadingError("Failed loading Rail " + key, ex);
+                        return null;
+                    }
+                };
+            } else {
+                rawModel = loadRawModel(resourceManager, key, obj);
             }
-            if (obj.has("flipV") && obj.get("flipV").getAsBoolean()) {
-                rawModel.applyUVMirror(false, true);
-            }
-
-            rawModel.sourceLocation = new ResourceLocation(rawModel.sourceLocation.toString() + "/" + key);
         }
         
         float repeatInterval = obj.has("repeatInterval") ? obj.get("repeatInterval").getAsFloat() : 0.5f;
@@ -139,6 +144,24 @@ public class RailModelRegistry {
             script.load("Rail " + key, "Rail", resourceManager, scripts, obj, key);
         }
 
+        if (lazyRawModelSupplier != null) {
+            return RailModelProperties.lazy(Text.translatable(obj.get("name").getAsString()), lazyRawModelSupplier, repeatInterval, yOffset, script);
+        }
         return new RailModelProperties(Text.translatable(obj.get("name").getAsString()), rawModel, repeatInterval, yOffset, script);
+    }
+
+    private static RawModel loadRawModel(ResourceManager resourceManager, String key, JsonObject obj) throws Exception {
+        RawModel rawModel = MainClient.modelManager.loadRawModel(resourceManager,
+                new ResourceLocation(obj.get("model").getAsString()), MainClient.atlasManager).copy();
+
+        if (obj.has("textureId")) {
+            rawModel.replaceTexture("default.png", new ResourceLocation(obj.get("textureId").getAsString()));
+        }
+        if (obj.has("flipV") && obj.get("flipV").getAsBoolean()) {
+            rawModel.applyUVMirror(false, true);
+        }
+
+        rawModel.sourceLocation = new ResourceLocation(rawModel.sourceLocation.toString() + "/" + key);
+        return rawModel;
     }
 }

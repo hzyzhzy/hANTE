@@ -43,7 +43,7 @@ public class MeshBuildingRailChunk extends RailChunkBase {
 
     protected MeshBuildingRailChunk(Long chunkId, String modelKey) {
         super(chunkId, modelKey);
-        this.railModel = RailModelRegistry.getProperty(modelKey).rawModel;
+        this.railModel = RailModelRegistry.getProperty(modelKey).getRawModel();
     }
 
     @Override

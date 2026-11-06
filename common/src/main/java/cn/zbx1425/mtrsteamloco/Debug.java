@@ -21,6 +21,7 @@ import org.apache.commons.io.FilenameUtils;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.ref.WeakReference;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -63,12 +64,14 @@ public class Debug {
     }
 
     public static void saveAllLoadedModels(Path outputDir) {
-        for (Map.Entry<ResourceLocation, RawModel> pair : MainClient.modelManager.loadedRawModels.entrySet()) {
+        for (Map.Entry<ResourceLocation, WeakReference<RawModel>> pair : MainClient.modelManager.loadedRawModels.entrySet()) {
+            RawModel model = pair.getValue().get();
+            if (model == null) continue;
             Path path = Paths.get(outputDir.toString(), pair.getKey().getNamespace(), pair.getKey().getPath());
             try {
                 Files.createDirectories(path.getParent());
                 FileOutputStream fos = new FileOutputStream(FilenameUtils.removeExtension(path.toString()) + ".nmb");
-                NmbModelLoader.serializeModel(pair.getValue(), fos, false);
+                NmbModelLoader.serializeModel(model, fos, false);
                 fos.close();
             } catch (IOException e) {
                 Main.LOGGER.error("Failed exporting models:", e);

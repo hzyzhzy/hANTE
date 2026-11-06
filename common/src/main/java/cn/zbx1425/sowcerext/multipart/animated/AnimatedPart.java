@@ -82,7 +82,7 @@ public class AnimatedPart extends PartBase {
     @Override
     public ModelCluster getModel(MultipartUpdateProp prop) {
         int lastState = prop.animatedPartStates.partStates.getOrDefault(id, -1);
-        if (lastState < 0 || lastState >= uploadedStates.length) return null;
+        if (lastState < 0 || uploadedStates == null || lastState >= uploadedStates.length) return null;
         return uploadedStates[lastState];
     }
 

@@ -16,6 +16,7 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import org.apache.commons.io.FilenameUtils;
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -24,7 +25,7 @@ public class ModelManager {
 
     public HashMap<ResourceLocation, Model> uploadedModels = new HashMap<>();
     public HashMap<ResourceLocation, ModelCluster> uploadedVertArrays = new HashMap<>();
-    public HashMap<ResourceLocation, RawModel> loadedRawModels = new HashMap<>();
+    public Map<ResourceLocation, WeakReference<RawModel>> loadedRawModels = new HashMap<>();
 
     public int vaoCount, vboCount;
 
@@ -52,6 +53,16 @@ public class ModelManager {
         loadedRawModels.clear();
     }
 
+    public void unloadCluster(ModelCluster cluster) {
+        uploadedVertArrays.values().removeIf(value -> value == cluster);
+        for (Model model : cluster.getUploadedModels()) {
+            if (model != null) {
+                uploadedModels.values().removeIf(value -> value == model);
+                model.close();
+            }
+        }
+    }
+
     public void clearNamespace(String namespace) {
         uploadedVertArrays.entrySet().stream()
                 .filter(k -> k.getKey().getNamespace().equals(namespace))
@@ -71,7 +82,11 @@ public class ModelManager {
     }
 
     public RawModel loadRawModel(ResourceManager resourceManager, ResourceLocation objLocation, AtlasManager atlasManager) throws IOException {
-        if (loadedRawModels.containsKey(objLocation)) return loadedRawModels.get(objLocation);
+        WeakReference<RawModel> cached = loadedRawModels.get(objLocation);
+        if (cached != null) {
+            RawModel existing = cached.get();
+            if (existing != null) return existing;
+        }
         String crntStatExt = FilenameUtils.getExtension(objLocation.getPath());
         RawModel result;
         switch (crntStatExt) {
@@ -90,7 +105,10 @@ public class ModelManager {
             default:
                 throw new IllegalArgumentException("Unknown model format: " + resourceManager);
         };
-        loadedRawModels.put(objLocation, result);
+        // The uploaded ModelCluster owns the GPU-side copy. Keep only a weak
+        // reference to the CPU-side RawModel so large modpacks can release it
+        // once no active model load needs it.
+        loadedRawModels.put(objLocation, new WeakReference<>(result));
         return result;
     }
 

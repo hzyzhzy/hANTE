@@ -9,6 +9,7 @@ import cn.zbx1425.mtrsteamloco.render.ShadersModHandler;
 import cn.zbx1425.mtrsteamloco.render.block.BlockEntityEyeCandyRenderer;
 import cn.zbx1425.mtrsteamloco.render.block.BlockEntityDirectNodeRenderer;
 import cn.zbx1425.mtrsteamloco.render.rail.RailRenderDispatcher;
+import cn.zbx1425.mtrsteamloco.render.integration.DynamicTrainModelUnloadManager;
 import cn.zbx1425.sowcer.util.DrawContext;
 import cn.zbx1425.sowcerext.reuse.AtlasManager;
 import cn.zbx1425.sowcerext.reuse.DrawScheduler;
@@ -60,6 +61,13 @@ public class MainClient {
 
 	public static void incrementGameTick() {
 		TrainScreen.tick();
+		DynamicTrainModelUnloadManager.tick();
+		if (modelStatsTicks >= 0 && ++modelStatsTicks >= 1200) {
+			modelStatsTicks = -1;
+			DynamicTrainModelUnloadManager.logSummary();
+		}
 	}
+
+	private static int modelStatsTicks = 0;
 
 }

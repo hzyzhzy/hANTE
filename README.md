@@ -88,6 +88,22 @@ ATP 默认开启；超过 ATP 红针会触发紧急制动。需要完全手动�
 - `YmtrAnteFallbackMixin` 关闭 YMTR 的 ANTE fallback 轨道渲染路径。该路径每帧对每根
   铁轨调用两次 `Rail.getPosition`，实测会把帧率压到原来的约 1/5。
 
+### 实验性内存优化（默认关闭）
+
+大追加包环境下模型内存主要来自「所有模型在资源加载时一次性解析并上传」。hANTE 提供了三组
+独立开关，把上传推迟到模型第一次真正渲染时：
+
+| 开关 | 作用 |
+| --- | --- |
+| 实验性：懒加载列车模型 | 列车第一次渲染时才加载 OBJ/BBMODEL |
+| 实验性：懒加载 EyeCandy 模型 | 装饰物第一次渲染时才加载模型 |
+| 实验性：懒加载轨道模型 | 自定义轨道第一次渲染时才解析/上传模型 |
+
+三者都**默认关闭**，保持与原版一致的行为。开启后会在对应模型首次出现时有一次加载延迟，
+之后正常；未出现在视野内的追加包内容完全不占模型内存。
+
+> 这些开关只影响内存占用，不会卸载已经加载的模型，因此不会出现模型消失或透明的问题。
+
 ### Bug 修复
 
 | 问题 | 修复 |
@@ -97,7 +113,14 @@ ATP 默认开启；超过 ATP 红针会触发紧急制动。需要完全手动�
 
 ## 版本
 
-当前版本：**1.1.4**，基线为上游 `alpha` 的 `0506691f`。
+当前版本：**1.1.5**，基线为上游 `alpha` 的 `0506691f`。
+
+### 1.1.5 主要变更
+
+- 新增三组**实验性模型懒加载**开关（列车模型 / EyeCandy 模型 / 轨道模型），**默认关闭**，
+  可在 `hANTE 设置 → 实验性功能` 中开启；追加包较多时实测可省约 1.5 GB 内存；
+- 模型解析缓存改为弱引用，上传后的 CPU 侧副本可被回收；
+- Fabric 侧的 ModMenu 描述与 Forge 统一。
 
 ### 1.1.4 主要变更
 
@@ -256,6 +279,25 @@ ATP is enabled by default; exceeding the ATP red needle triggers emergency braki
 - `YmtrAnteFallbackMixin` disables YMTR's ANTE fallback rail-rendering path. That path calls
   `Rail.getPosition` twice per rail per frame and was measured to reduce FPS to about 1/5.
 
+### Experimental memory optimisation (off by default)
+
+With large addon packs, model memory comes mostly from parsing and uploading every model
+during resource load. hANTE offers three independent toggles that defer upload until a model
+is rendered for the first time:
+
+| Toggle | Effect |
+| --- | --- |
+| Experimental: lazy-load train models | Load OBJ/BBMODEL only when a train is first rendered |
+| Experimental: lazy-load EyeCandy models | Load decorative models only when first rendered |
+| Experimental: lazy-load rail models | Parse/upload custom rail models only when first rendered |
+
+All three are **off by default**, matching vanilla behaviour. When enabled there is a one-off
+load hitch the first time a model appears; afterwards it behaves normally, and addon content
+that never enters view occupies no model memory at all.
+
+> These toggles only affect memory usage. They never unload an already-loaded model, so models
+> cannot disappear or turn transparent.
+
 ### Bug fixes
 
 | Problem | Fix |
@@ -265,7 +307,15 @@ ATP is enabled by default; exceeding the ATP red needle triggers emergency braki
 
 ## Version
 
-Current version: **1.1.4**, based on upstream `alpha` at `0506691f`.
+Current version: **1.1.5**, based on upstream `alpha` at `0506691f`.
+
+### 1.1.5 highlights
+
+- Added three **experimental model lazy-loading** toggles (train models / EyeCandy models /
+  rail models). They are **off by default** and can be enabled in
+  `hANTE settings → experimental features`; with many addon packs they save around 1.5 GB;
+- the model parse cache now uses weak references so uploaded CPU-side copies can be collected;
+- the Fabric ModMenu description now matches Forge.
 
 ### 1.1.4 highlights
 

@@ -2,8 +2,10 @@ package cn.zbx1425.mtrsteamloco.data;
 
 import cn.zbx1425.mtrsteamloco.Main;
 import cn.zbx1425.mtrsteamloco.MainClient;
+import cn.zbx1425.mtrsteamloco.ClientConfig;
 import cn.zbx1425.mtrsteamloco.render.integration.MtrModelRegistryUtil;
 import cn.zbx1425.mtrsteamloco.render.scripting.ScriptHolder;
+import cn.zbx1425.sowcer.util.GlStateTracker;
 import cn.zbx1425.sowcer.math.Vector3f;
 import cn.zbx1425.sowcerext.model.ModelCluster;
 import cn.zbx1425.sowcerext.model.RawModel;
@@ -27,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.function.Supplier;
 
 public class EyeCandyRegistry {
 
@@ -83,7 +86,62 @@ public class EyeCandyRegistry {
         }
 
         ModelCluster cluster = null;
+        Supplier<ModelCluster> modelSupplier = null;
         if (obj.has("model")) {
+            // Keep a permanent supplier so an aggressively unloaded model can be rebuilt.
+            final JsonObject modelObj = obj;
+            modelSupplier = () -> {
+                try {
+                    return loadModel(resourceManager, key, modelObj);
+                } catch (Exception ex) {
+                    Main.LOGGER.error("Failed loading eye-candy model: " + key, ex);
+                    MtrModelRegistryUtil.recordLoadingError("Failed loading Eye-candy " + key, ex);
+                    return null;
+                }
+            };
+            if (!ClientConfig.experimentalLazyEyeCandyModels) {
+                cluster = modelSupplier.get();
+            }
+        }
+        ScriptHolder script = null;
+        if (obj.has("scriptFiles")) {
+            script = new ScriptHolder();
+            Map<ResourceLocation, String> scripts = new Object2ObjectArrayMap<>();
+            if (obj.has("scriptTexts")) {
+                JsonArray scriptTexts = obj.get("scriptTexts").getAsJsonArray();
+                for (int i = 0; i < scriptTexts.size(); i++) {
+                    scripts.put(new ResourceLocation("mtrsteamloco", "script_texts/" + key + "/" + i),
+                            scriptTexts.get(i).getAsString());
+                }
+            }
+            JsonArray scriptFiles = obj.get("scriptFiles").getAsJsonArray();
+            for (int i = 0; i < scriptFiles.size(); i++) {
+                ResourceLocation scriptLocation = new ResourceLocation(scriptFiles.get(i).getAsString());
+                scripts.put(scriptLocation, ResourceUtil.readResource(resourceManager, scriptLocation));
+            }
+            script.load("EyeCandy " + key, "Block", resourceManager, scripts, obj, key);
+        }
+        String shape = obj.has("shape")? obj.get("shape").getAsString() : "0, 0, 0, 16, 16, 16";
+        String collisionShape = obj.has("collisionShape") ? obj.get("collisionShape").getAsString() : "0, 0, 0, 0, 0, 0";
+        boolean fixedMatrix = obj.has("fixedMatrix") ? obj.get("fixedMatrix").getAsBoolean() : false;
+        boolean isTicketBarrier = obj.has("isTicketBarrier") ? obj.get("isTicketBarrier").getAsBoolean() : false;
+        boolean isEntrance = obj.has("isEntrance") ? obj.get("isEntrance").getAsBoolean() : false;
+        boolean asPlatform = obj.has("asPlatform") ? obj.get("asPlatform").getAsBoolean() : false;
+        if (cluster == null && modelSupplier == null && script == null) {
+            throw new IllegalArgumentException("Invalid eye-candy json: " + key);
+        } else if (modelSupplier != null) {
+            EyeCandyProperties properties = EyeCandyProperties.lazy(Text.translatable(obj.get("name").getAsString()), modelSupplier, script, shape, collisionShape, fixedMatrix, lightLevel, isTicketBarrier, isEntrance, asPlatform);
+            properties.model = cluster;
+            return properties;
+        } else {
+            return new EyeCandyProperties(Text.translatable(obj.get("name").getAsString()), null, script, shape, collisionShape, fixedMatrix, lightLevel, isTicketBarrier, isEntrance, asPlatform);
+        }
+    }
+
+    private static ModelCluster loadModel(ResourceManager resourceManager, String key, JsonObject obj) throws Exception {
+        boolean needProtection = !GlStateTracker.isStateProtected;
+        if (needProtection) GlStateTracker.capture();
+        try {
             RawModel rawModel = MainClient.modelManager.loadRawModel(resourceManager,
                     new ResourceLocation(obj.get("model").getAsString()), MainClient.atlasManager).copy();
 
@@ -117,37 +175,9 @@ public class EyeCandyRegistry {
             }
 
             rawModel.sourceLocation = new ResourceLocation(rawModel.sourceLocation.toString() + "/" + key);
-
-            cluster = MainClient.modelManager.uploadVertArrays(rawModel);
-        }
-        ScriptHolder script = null;
-        if (obj.has("scriptFiles")) {
-            script = new ScriptHolder();
-            Map<ResourceLocation, String> scripts = new Object2ObjectArrayMap<>();
-            if (obj.has("scriptTexts")) {
-                JsonArray scriptTexts = obj.get("scriptTexts").getAsJsonArray();
-                for (int i = 0; i < scriptTexts.size(); i++) {
-                    scripts.put(new ResourceLocation("mtrsteamloco", "script_texts/" + key + "/" + i),
-                            scriptTexts.get(i).getAsString());
-                }
-            }
-            JsonArray scriptFiles = obj.get("scriptFiles").getAsJsonArray();
-            for (int i = 0; i < scriptFiles.size(); i++) {
-                ResourceLocation scriptLocation = new ResourceLocation(scriptFiles.get(i).getAsString());
-                scripts.put(scriptLocation, ResourceUtil.readResource(resourceManager, scriptLocation));
-            }
-            script.load("EyeCandy " + key, "Block", resourceManager, scripts, obj, key);
-        }
-        String shape = obj.has("shape")? obj.get("shape").getAsString() : "0, 0, 0, 16, 16, 16";
-        String collisionShape = obj.has("collisionShape") ? obj.get("collisionShape").getAsString() : "0, 0, 0, 0, 0, 0";
-        boolean fixedMatrix = obj.has("fixedMatrix") ? obj.get("fixedMatrix").getAsBoolean() : false;
-        boolean isTicketBarrier = obj.has("isTicketBarrier") ? obj.get("isTicketBarrier").getAsBoolean() : false;
-        boolean isEntrance = obj.has("isEntrance") ? obj.get("isEntrance").getAsBoolean() : false;
-        boolean asPlatform = obj.has("asPlatform") ? obj.get("asPlatform").getAsBoolean() : false;
-        if (cluster == null && script == null) {
-            throw new IllegalArgumentException("Invalid eye-candy json: " + key);
-        } else {
-            return new EyeCandyProperties(Text.translatable(obj.get("name").getAsString()), cluster, script, shape, collisionShape, fixedMatrix, lightLevel, isTicketBarrier, isEntrance, asPlatform);
+            return MainClient.modelManager.uploadVertArrays(rawModel);
+        } finally {
+            if (needProtection) GlStateTracker.restore();
         }
     }
 }

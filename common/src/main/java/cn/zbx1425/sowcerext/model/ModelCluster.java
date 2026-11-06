@@ -3,6 +3,7 @@ package cn.zbx1425.sowcerext.model;
 import cn.zbx1425.sowcer.batch.BatchManager;
 import cn.zbx1425.sowcer.batch.EnqueueProp;
 import cn.zbx1425.sowcer.batch.ShaderProp;
+import cn.zbx1425.sowcer.model.Model;
 import cn.zbx1425.sowcer.model.VertArrays;
 import cn.zbx1425.sowcer.util.AttrUtil;
 import cn.zbx1425.sowcer.util.DrawContext;
@@ -23,6 +24,9 @@ public class ModelCluster implements Closeable {
     public final VertArrays uploadedTranslucentParts;
     public final RawModel translucentParts;
 
+    private final Model uploadedOpaqueModel;
+    private final Model uploadedTranslucentModel;
+
     public ModelCluster(RawModel source, VertAttrMapping mapping, ModelManager modelManager) {
         this.translucentParts = new RawModel();
         this.opaqueParts = new RawModel();
@@ -33,10 +37,12 @@ public class ModelCluster implements Closeable {
                 opaqueParts.append(mesh);
             }
         }
+        this.uploadedOpaqueModel = modelManager.uploadModel(opaqueParts);
         this.uploadedOpaqueParts = VertArrays.createAll(
-                modelManager.uploadModel(opaqueParts), mapping, null);
+                uploadedOpaqueModel, mapping, null);
+        this.uploadedTranslucentModel = modelManager.uploadModel(translucentParts);
         this.uploadedTranslucentParts = VertArrays.createAll(
-                modelManager.uploadModel(translucentParts), mapping, null);
+                uploadedTranslucentModel, mapping, null);
     }
 
     public ModelCluster(RawModel source, VertAttrMapping mapping) {
@@ -50,8 +56,10 @@ public class ModelCluster implements Closeable {
                 opaqueParts.append(mesh);
             }
         }
+        this.uploadedOpaqueModel = null;
         this.uploadedOpaqueParts = VertArrays.createAll(
                 opaqueParts.upload(mapping), mapping, null);
+        this.uploadedTranslucentModel = null;
         this.uploadedTranslucentParts = VertArrays.createAll(
                 translucentParts.upload(mapping), mapping, null);
     }
@@ -61,6 +69,12 @@ public class ModelCluster implements Closeable {
         this.opaqueParts = opaqueParts;
         this.uploadedTranslucentParts = uploadedTranslucentParts;
         this.translucentParts = translucentParts;
+        this.uploadedOpaqueModel = null;
+        this.uploadedTranslucentModel = null;
+    }
+
+    public Model[] getUploadedModels() {
+        return new Model[] { uploadedOpaqueModel, uploadedTranslucentModel };
     }
 
     public void enqueueOpaqueGl(BatchManager batchManager, Matrix4f pose, int light, DrawContext drawContext) {

@@ -29,6 +29,9 @@ public class ClientConfig {
 
     public static boolean enableOptimization = true;
     public static boolean enableBbModelPreload = false;
+    public static boolean experimentalLazyTrainModels = false;
+    public static boolean experimentalLazyEyeCandyModels = false;
+    public static boolean experimentalLazyRailModels = false;
     public static boolean translucentSort = true;
 
     public static boolean enableScriptDebugOverlay = false;
@@ -78,6 +81,9 @@ public class ClientConfig {
             JsonObject configObject = Main.JSON_PARSER.parse(Files.readString(path)).getAsJsonObject();
             enableOptimization = !getOrDefault(configObject, "shaderCompatMode", JsonElement::getAsBoolean, false);
             enableBbModelPreload = getOrDefault(configObject, "enableBbModelPreload", JsonElement::getAsBoolean, false);
+            experimentalLazyTrainModels = getOrDefault(configObject, "experimentalLazyTrainModels", JsonElement::getAsBoolean, false);
+            experimentalLazyEyeCandyModels = getOrDefault(configObject, "experimentalLazyEyeCandyModels", JsonElement::getAsBoolean, false);
+            experimentalLazyRailModels = getOrDefault(configObject, "experimentalLazyRailModels", JsonElement::getAsBoolean, false);
             translucentSort = getOrDefault(configObject, "translucentSort", JsonElement::getAsBoolean, false);
             enableScriptDebugOverlay = getOrDefault(configObject, "enableScriptDebugOverlay", JsonElement::getAsBoolean, false);
             enableRail3D = getOrDefault(configObject, "enableRail3D", JsonElement::getAsBoolean, true);
@@ -152,6 +158,9 @@ public class ClientConfig {
             JsonObject configObject = new JsonObject();
             configObject.addProperty("shaderCompatMode", !enableOptimization);
             configObject.addProperty("enableBbModelPreload", enableBbModelPreload);
+            configObject.addProperty("experimentalLazyTrainModels", experimentalLazyTrainModels);
+            configObject.addProperty("experimentalLazyEyeCandyModels", experimentalLazyEyeCandyModels);
+            configObject.addProperty("experimentalLazyRailModels", experimentalLazyRailModels);
             configObject.addProperty("translucentSort", translucentSort);
             configObject.addProperty("enableScriptDebugOverlay", enableScriptDebugOverlay);
             configObject.addProperty("enableRail3D", enableRail3D);
