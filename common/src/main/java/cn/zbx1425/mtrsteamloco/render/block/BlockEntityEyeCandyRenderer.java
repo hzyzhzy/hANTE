@@ -1,6 +1,9 @@
 package cn.zbx1425.mtrsteamloco.render.block;
 
 import cn.zbx1425.mtrsteamloco.MainClient;
+import cn.zbx1425.mtrsteamloco.ClientConfig;
+import cn.zbx1425.mtrsteamloco.render.RenderSpace;
+import cn.zbx1425.mtrsteamloco.render.rail.RailChunkBase;
 import cn.zbx1425.mtrsteamloco.block.BlockEyeCandy;
 import cn.zbx1425.mtrsteamloco.data.EyeCandyProperties;
 import cn.zbx1425.mtrsteamloco.data.EyeCandyRegistry;
@@ -69,7 +72,11 @@ public class BlockEntityEyeCandyRenderer extends BlockEntityRendererMapper<Block
     }
 
     public static void commit(@NotNull PoseStack matrices, @NotNull MultiBufferSource vertexConsumers) {
-        Matrix4f worldPose = new Matrix4f(matrices.last().pose()).copy();
+        // rawPose 保持宿主原样；worldPose 归一化成 R*T(-cam) 供脚本/音源使用
+        Matrix4f rawPose = new Matrix4f(matrices.last().pose()).copy();
+        Matrix4f worldPose = RenderSpace.normalizeView(rawPose.copy());
+        final Vec3 renderShift = RenderSpace.worldShift();
+        final Vec3 cameraPos = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
         HashSet<BlockEyeCandy.BlockEntityEyeCandy> temp = new HashSet<>(entitysToRender);
         for (BlockEyeCandy.BlockEntityEyeCandy blockEntity : temp) {
             if (blockEntity == null) continue;
@@ -85,7 +92,7 @@ public class BlockEntityEyeCandyRenderer extends BlockEntityRendererMapper<Block
             EyeCandyProperties prop = EyeCandyRegistry.getProperty(blockEntity.prefabId);
             if (prop == null || RailRenderDispatcher.isHoldingBrush) {
                 matrices.pushPose();
-                matrices.translate(pos.getX(), pos.getY(), pos.getZ());
+                matrices.translate(pos.getX() + renderShift.x, pos.getY() + renderShift.y, pos.getZ() + renderShift.z);
                 matrices.translate(0.5f, 0.5f, 0.5f);
                 PoseStackUtil.rotY(matrices, (float) ((System.currentTimeMillis() % 1000) * (Math.PI * 2 / 1000)));
 #if MC_VERSION >= "11904"
@@ -106,8 +113,19 @@ public class BlockEntityEyeCandyRenderer extends BlockEntityRendererMapper<Block
             }
             if (prop == null) continue;
             
-            Matrix4f candyPose = worldPose.copy();
-            candyPose.mul(blockEntity.getBaseMatrix());
+            Matrix4f baseMatrix = blockEntity.getBaseMatrix();
+            Matrix4f candyPose;
+            if (ClientConfig.precisionFix) {
+                // baseMatrix 的平移就是方块世界坐标。先在 double 下和相机坐标作差，
+                // 再乘上「去掉平移」的旋转/缩放部分 —— 平移列全程是小数值，不丢精度。
+                Vec3 basePos = baseMatrix.getTranslationPart().toVec3();
+                candyPose = RailChunkBase.cameraRelativeMatrix(rawPose,
+                        basePos.x - cameraPos.x, basePos.y - cameraPos.y, basePos.z - cameraPos.z);
+                candyPose.mul(RailChunkBase.withoutTranslation(baseMatrix));
+            } else {
+                candyPose = rawPose.copy();
+                candyPose.mul(baseMatrix);
+            }
             ModelCluster candyModel = prop.getModel();
             if (candyModel != null) {
                 prop.touch();

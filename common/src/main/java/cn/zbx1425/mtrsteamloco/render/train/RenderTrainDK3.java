@@ -2,6 +2,9 @@ package cn.zbx1425.mtrsteamloco.render.train;
 
 import cn.zbx1425.mtrsteamloco.Main;
 import cn.zbx1425.mtrsteamloco.MainClient;
+import cn.zbx1425.mtrsteamloco.ClientConfig;
+import cn.zbx1425.mtrsteamloco.render.rail.RailChunkBase;
+import cn.zbx1425.mtrsteamloco.render.RenderSpace;
 import cn.zbx1425.mtrsteamloco.render.RenderUtil;
 import cn.zbx1425.sowcer.math.Matrix4f;
 import cn.zbx1425.sowcer.math.PoseStackUtil;
@@ -152,7 +155,9 @@ public class RenderTrainDK3 extends TrainRendererBase {
         }
 
         matrices.pushPose();
-        matrices.translate(x, y - 1, z);
+        // 只在宿主已去掉相机平移时补偏移；原版 MTR 上 shift 为 0，与以前完全一致
+        final Vec3 renderShift = RenderSpace.worldShift();
+        matrices.translate(x + renderShift.x, y - 1 + renderShift.y, z + renderShift.z);
         PoseStackUtil.rotY(matrices, (float) Math.PI + yaw);
         final boolean hasPitch = pitch < 0 ? train.transportMode.hasPitchAscending : train.transportMode.hasPitchDescending;
         PoseStackUtil.rotX(matrices, hasPitch ? pitch : 0);

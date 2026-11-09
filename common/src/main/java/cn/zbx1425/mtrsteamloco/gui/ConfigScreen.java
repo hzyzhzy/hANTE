@@ -28,6 +28,126 @@ public final class ConfigScreen {
         ConfigCategory common = builder.getOrCreateCategory(
                 Text.translatable("gui.mtrsteamloco.config.client.category.common")
         );
+
+        ConfigCategory view = builder.getOrCreateCategory(
+                Text.translatable("gui.mtrsteamloco.config.client.category.view")
+        );
+
+        ConfigCategory experimental = builder.getOrCreateCategory(
+                Text.translatable("gui.mtrsteamloco.config.client.category.experimental")
+        );
+        experimental.addEntry(entryBuilder
+                .startBooleanToggle(
+                        Text.translatable("gui.mtrsteamloco.config.client.scriptdebugoverlay"),
+                        ClientConfig.enableScriptDebugOverlay
+                ).setSaveConsumer(checked -> ClientConfig.enableScriptDebugOverlay = checked).setDefaultValue(false).build()
+        );
+
+
+        experimental.addEntry(entryBuilder.startTextDescription(
+                        Text.translatable("gui.mtrsteamloco.config.client.experimental_features")
+                ).build()
+        );
+        experimental.addEntry(entryBuilder
+                .startBooleanToggle(
+                        Text.translatable("gui.mtrsteamloco.config.client.lazy_train_models"),
+                        ClientConfig.experimentalLazyTrainModels
+                ).setTooltip(
+                        Text.translatable("gui.mtrsteamloco.config.client.lazy_train_models.description")
+                ).setSaveConsumer(checked -> {
+                    boolean needReload = ClientConfig.experimentalLazyTrainModels != checked;
+                    ClientConfig.experimentalLazyTrainModels = checked;
+                    if (needReload) {
+                        Minecraft.getInstance().execute(() -> Minecraft.getInstance().reloadResourcePacks());
+                    }
+                }).setDefaultValue(false).build()
+        );
+        experimental.addEntry(entryBuilder
+                .startBooleanToggle(
+                        Text.translatable("gui.mtrsteamloco.config.client.lazy_eyecandy_models"),
+                        ClientConfig.experimentalLazyEyeCandyModels
+                ).setTooltip(
+                        Text.translatable("gui.mtrsteamloco.config.client.lazy_eyecandy_models.description")
+                ).setSaveConsumer(checked -> {
+                    boolean needReload = ClientConfig.experimentalLazyEyeCandyModels != checked;
+                    ClientConfig.experimentalLazyEyeCandyModels = checked;
+                    if (needReload) {
+                        Minecraft.getInstance().execute(() -> Minecraft.getInstance().reloadResourcePacks());
+                    }
+                }).setDefaultValue(false).build()
+        );
+        experimental.addEntry(entryBuilder
+                .startBooleanToggle(
+                        Text.translatable("gui.mtrsteamloco.config.client.lazy_rail_models"),
+                        ClientConfig.experimentalLazyRailModels
+                ).setTooltip(
+                        Text.translatable("gui.mtrsteamloco.config.client.lazy_rail_models.description")
+                ).setSaveConsumer(checked -> {
+                    boolean needReload = ClientConfig.experimentalLazyRailModels != checked;
+                    ClientConfig.experimentalLazyRailModels = checked;
+                    if (needReload) {
+                        Minecraft.getInstance().execute(() -> Minecraft.getInstance().reloadResourcePacks());
+                    }
+                }).setDefaultValue(false).build()
+        );
+
+        view.addEntry(entryBuilder
+                .startBooleanToggle(
+                        Text.translatable("gui.mtrsteamloco.config.client.rolling"),
+                        ClientConfig.enableRolling
+                ).setSaveConsumer(checked -> ClientConfig.enableRolling = checked).setDefaultValue(true).build()
+        );
+        // ---- 列车视角惯性（弹簧-阻尼）----
+        view.addEntry(entryBuilder
+                .startBooleanToggle(
+                        Text.translatable("gui.mtrsteamloco.config.client.camera_inertia"),
+                        ClientConfig.enableCameraInertia
+                ).setSaveConsumer(checked -> ClientConfig.enableCameraInertia = checked).setDefaultValue(true).build()
+        );
+        view.addEntry(entryBuilder
+                .startIntSlider(
+                        Text.translatable("gui.mtrsteamloco.config.client.camera_inertia_strength"),
+                        Math.round(ClientConfig.cameraInertiaStrength * 10.0f), 0, 50
+                ).setSaveConsumer(value -> ClientConfig.cameraInertiaStrength = value / 10.0f).setDefaultValue(2).build()
+        );
+        view.addEntry(entryBuilder
+                .startIntSlider(
+                        Text.translatable("gui.mtrsteamloco.config.client.camera_inertia_stiffness"),
+                        Math.round(ClientConfig.cameraInertiaStiffness), 5, 100
+                ).setSaveConsumer(value -> ClientConfig.cameraInertiaStiffness = value).setDefaultValue(70).build()
+        );
+        view.addEntry(entryBuilder
+                .startIntSlider(
+                        Text.translatable("gui.mtrsteamloco.config.client.camera_inertia_damping"),
+                        Math.round(ClientConfig.cameraInertiaDamping * 100.0f), 5, 95
+                ).setSaveConsumer(value -> ClientConfig.cameraInertiaDamping = value / 100.0f).setDefaultValue(20).build()
+        );
+        experimental.addEntry(entryBuilder
+                .startBooleanToggle(
+                        Text.translatable("gui.mtrsteamloco.config.client.precisionfix"),
+                        ClientConfig.precisionFix
+                ).setTooltip(Text.translatable("gui.mtrsteamloco.config.client.precisionfix.tooltip"))
+                .setSaveConsumer(checked -> {
+                    boolean needReload = ClientConfig.precisionFix != checked;
+                    ClientConfig.precisionFix = checked;
+                    if (needReload) {
+                        // 轨道几何的烘焙坐标系变了，必须整批重建
+                        ClientConfig.save();
+                        cn.zbx1425.mtrsteamloco.MainClient.railRenderDispatcher.clearRail();
+                        Minecraft.getInstance().levelRenderer.allChanged();
+                    }
+                }).setDefaultValue(true).build()
+        );
+        experimental.addEntry(entryBuilder
+                .startBooleanToggle(
+                        Text.translatable("gui.mtrsteamloco.config.client.mixinmtrprecision"),
+                        ClientConfig.mixinMtrPrecision
+                ).setTooltip(Text.translatable("gui.mtrsteamloco.config.client.mixinmtrprecision.tooltip"))
+                .setSaveConsumer(checked -> {
+                    ClientConfig.mixinMtrPrecision = checked;
+                    ClientConfig.save();
+                }).setDefaultValue(false).build()
+        );
         common.addEntry(entryBuilder
                 .startBooleanToggle(
                         Text.translatable("gui.mtrsteamloco.config.client.hideridingtrain"),
@@ -71,58 +191,7 @@ public final class ConfigScreen {
                         Text.translatable("gui.mtrsteamloco.config.client.preloadbbmodel.description")
                 ).build()
         );
-        common.addEntry(entryBuilder.startTextDescription(
-                        Text.translatable("gui.mtrsteamloco.config.client.experimental_features")
-                ).build()
-        );
-        common.addEntry(entryBuilder
-                .startBooleanToggle(
-                        Text.translatable("gui.mtrsteamloco.config.client.lazy_train_models"),
-                        ClientConfig.experimentalLazyTrainModels
-                ).setTooltip(
-                        Text.translatable("gui.mtrsteamloco.config.client.lazy_train_models.description")
-                ).setSaveConsumer(checked -> {
-                    boolean needReload = ClientConfig.experimentalLazyTrainModels != checked;
-                    ClientConfig.experimentalLazyTrainModels = checked;
-                    if (needReload) {
-                        Minecraft.getInstance().execute(() -> Minecraft.getInstance().reloadResourcePacks());
-                    }
-                }).setDefaultValue(false).build()
-        );
-        common.addEntry(entryBuilder
-                .startBooleanToggle(
-                        Text.translatable("gui.mtrsteamloco.config.client.lazy_eyecandy_models"),
-                        ClientConfig.experimentalLazyEyeCandyModels
-                ).setTooltip(
-                        Text.translatable("gui.mtrsteamloco.config.client.lazy_eyecandy_models.description")
-                ).setSaveConsumer(checked -> {
-                    boolean needReload = ClientConfig.experimentalLazyEyeCandyModels != checked;
-                    ClientConfig.experimentalLazyEyeCandyModels = checked;
-                    if (needReload) {
-                        Minecraft.getInstance().execute(() -> Minecraft.getInstance().reloadResourcePacks());
-                    }
-                }).setDefaultValue(false).build()
-        );
-        common.addEntry(entryBuilder
-                .startBooleanToggle(
-                        Text.translatable("gui.mtrsteamloco.config.client.lazy_rail_models"),
-                        ClientConfig.experimentalLazyRailModels
-                ).setTooltip(
-                        Text.translatable("gui.mtrsteamloco.config.client.lazy_rail_models.description")
-                ).setSaveConsumer(checked -> {
-                    boolean needReload = ClientConfig.experimentalLazyRailModels != checked;
-                    ClientConfig.experimentalLazyRailModels = checked;
-                    if (needReload) {
-                        Minecraft.getInstance().execute(() -> Minecraft.getInstance().reloadResourcePacks());
-                    }
-                }).setDefaultValue(false).build()
-        );
-        common.addEntry(entryBuilder
-                .startBooleanToggle(
-                        Text.translatable("gui.mtrsteamloco.config.client.scriptdebugoverlay"),
-                        ClientConfig.enableScriptDebugOverlay
-                ).setSaveConsumer(checked -> ClientConfig.enableScriptDebugOverlay = checked).setDefaultValue(false).build()
-        );
+
 
         common.addEntry(entryBuilder.startTextDescription(
                         Text.translatable("gui.mtrsteamloco.config.client.category.misc")
@@ -172,37 +241,8 @@ public final class ConfigScreen {
                         ClientConfig.enableSmoke
                 ).setSaveConsumer(checked -> ClientConfig.enableSmoke = checked).setDefaultValue(true).build()
         );
-        common.addEntry(entryBuilder
-                .startBooleanToggle(
-                        Text.translatable("gui.mtrsteamloco.config.client.rolling"),
-                        ClientConfig.enableRolling
-                ).setSaveConsumer(checked -> ClientConfig.enableRolling = checked).setDefaultValue(true).build()
-        );
-        // ---- 列车视角惯性（弹簧-阻尼）----
-        common.addEntry(entryBuilder
-                .startBooleanToggle(
-                        Text.translatable("gui.mtrsteamloco.config.client.camera_inertia"),
-                        ClientConfig.enableCameraInertia
-                ).setSaveConsumer(checked -> ClientConfig.enableCameraInertia = checked).setDefaultValue(true).build()
-        );
-        common.addEntry(entryBuilder
-                .startIntSlider(
-                        Text.translatable("gui.mtrsteamloco.config.client.camera_inertia_strength"),
-                        Math.round(ClientConfig.cameraInertiaStrength * 10.0f), 0, 50
-                ).setSaveConsumer(value -> ClientConfig.cameraInertiaStrength = value / 10.0f).setDefaultValue(2).build()
-        );
-        common.addEntry(entryBuilder
-                .startIntSlider(
-                        Text.translatable("gui.mtrsteamloco.config.client.camera_inertia_stiffness"),
-                        Math.round(ClientConfig.cameraInertiaStiffness), 5, 100
-                ).setSaveConsumer(value -> ClientConfig.cameraInertiaStiffness = value).setDefaultValue(70).build()
-        );
-        common.addEntry(entryBuilder
-                .startIntSlider(
-                        Text.translatable("gui.mtrsteamloco.config.client.camera_inertia_damping"),
-                        Math.round(ClientConfig.cameraInertiaDamping * 100.0f), 5, 95
-                ).setSaveConsumer(value -> ClientConfig.cameraInertiaDamping = value / 100.0f).setDefaultValue(20).build()
-        );
+
+
         common.addEntry(entryBuilder
                 .startIntField(
                         Text.translatable("gui.mtrsteamloco.config.client.rail_distance_renderer_interval"),

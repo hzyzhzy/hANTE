@@ -75,7 +75,7 @@
     "gui.mtrsteamloco.error.title": "ANTE 資源載入時發生錯誤",
     "gui.mtrsteamloco.error.explain": "若為一般玩家，請直接點擊取消。若為資源包作者，可查看錯誤詳情。\n此錯誤可能由資源包問題引起，亦可能是其他使用 ANTE 功能的模組或 ANTE 本身的錯誤。",
     "gui.mtrsteamloco.error.invalid_value": "數值無效",
-    "gui.mtrsteamloco.config.client.title": "ANTE 客戶端設定",
+    "gui.mtrsteamloco.config.client.title": "hANTE 客戶端設定",
     "gui.mtrsteamloco.config.client.category.common": "一般",
     "gui.mtrsteamloco.config.client.category.misc": "其他",
     "gui.mtrsteamloco.config.client.shaderactive": "因與 Optifine 衝突，立體軌道功能與渲染優化目前無法使用。",
@@ -124,5 +124,11 @@
     "gui.mtrsteamloco.direct_node.unbind": "解除綁定",
     "tooltip.mtrsteamloco.direct_node.bound": "§b已綁定：%s°",
     "tooltip.mtrsteamloco.direct_node.unbound": "未綁定",
-    "key.mtrsteamloco.train_neutral": "回零/惰行"
+    "key.mtrsteamloco.train_neutral": "回零/惰行",
+    "gui.mtrsteamloco.config.client.precisionfix": "實驗性：修復遠座標抖動",
+    "gui.mtrsteamloco.config.client.precisionfix.tooltip": "以軌道區塊為基準烘焙 ANTE 自己的幾何體（軌道、裝飾物件、腳本列車、節點方塊），世界座標只保留在 double 側，修復遠離出生點後的抖動。宿主本身已修好距離現象時不需要它。",
+    "gui.mtrsteamloco.config.client.mixinmtrprecision": "實驗性：開啟 MTR 距離現象修復（Mixin）",
+    "gui.mtrsteamloco.config.client.mixinmtrprecision.tooltip": "修改 MTR 自身的渲染，使列車、月台門、吊板、路線圖、指示牌在遠處不再抖動，並修復列車行駛過程中的抖動。做法是把 MTR 裡按世界座標呼叫的 translate() 改寫為相機相對座標。實驗性：可能導致所乘坐的車廂或其它 MTR 物件錯位，除非確實需要，建議保持關閉。",
+    "gui.mtrsteamloco.config.client.category.experimental": "實驗性",
+    "gui.mtrsteamloco.config.client.category.view": "視角"
 }

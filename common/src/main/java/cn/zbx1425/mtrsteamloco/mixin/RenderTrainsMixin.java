@@ -27,6 +27,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import cn.zbx1425.mtrsteamloco.gui.DirectNodeScreen;
 import cn.zbx1425.mtrsteamloco.render.RailDistanceRenderer;
+import cn.zbx1425.mtrsteamloco.render.RenderSpace;
 import cn.zbx1425.mtrsteamloco.data.CameraInertia;
 import cn.zbx1425.mtrsteamloco.data.Rolling;
 import cn.zbx1425.mtrsteamloco.game.TrainVirtualDrive;
@@ -102,6 +103,12 @@ public class RenderTrainsMixin implements IGui{
 
         Minecraft.getInstance().level.getProfiler().popPush("NTERailwayData");
         Matrix4f viewMatrix = new Matrix4f(matrices.last().pose());
+        // 探测宿主 pose stack 是否仍烘焙了相机平移（YMTR 的「距离现象修复」把它去掉了），
+        // 供列车 / 装饰物件 / 节点方块等渲染器决定要不要自己减相机坐标。
+        // 光影的阴影 pass 用的是光源视角矩阵，不能拿来判断，必须跳过。
+        if (!ShadersModHandler.isRenderingShadowPass()) {
+            RenderSpace.update(viewMatrix, Minecraft.getInstance().gameRenderer.getMainCamera().getPosition());
+        }
         MainClient.railRenderDispatcher.prepareDraw();
         if (ClientConfig.getRailRenderLevel() >= 2) {
             GlStateTracker.capture();

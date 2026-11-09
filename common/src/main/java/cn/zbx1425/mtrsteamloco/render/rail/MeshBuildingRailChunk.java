@@ -1,11 +1,13 @@
 package cn.zbx1425.mtrsteamloco.render.rail;
 
+import cn.zbx1425.mtrsteamloco.ClientConfig;
 import cn.zbx1425.mtrsteamloco.data.RailModelRegistry;
 import cn.zbx1425.sowcer.batch.BatchManager;
 import cn.zbx1425.sowcer.batch.EnqueueProp;
 import cn.zbx1425.sowcer.batch.ShaderProp;
 import cn.zbx1425.sowcer.math.Matrix4f;
-import cn.zbx1425.sowcer.math.Vector3f;
+import net.minecraft.client.Minecraft;
+import net.minecraft.world.phys.Vec3;
 import cn.zbx1425.sowcer.model.Model;
 import cn.zbx1425.sowcer.model.VertArrays;
 import cn.zbx1425.sowcer.vertex.VertAttrMapping;
@@ -51,15 +53,20 @@ public class MeshBuildingRailChunk extends RailChunkBase {
         super.rebuildBuffer(world);
         if (railModel == null) return;
 
+        // 几何以「区块相对坐标」烘焙，取光照时要加回区块原点换回世界坐标
+        final boolean precise = ClientConfig.precisionFix;
+        Vec3 chunkOrigin = getChunkOrigin();
         float yMin = 256, yMax = -64;
         RawModel combinedModel = new RawModel();
         for (Map.Entry<BakedRail, ArrayList<Matrix4f>> entry : containingRails.entrySet()) {
             ArrayList<Matrix4f> railSpan = entry.getValue();
             for (Matrix4f pieceMat : railSpan) {
-                final Vector3f lightPos = pieceMat.getTranslationPart();
-                yMin = Math.min(yMin, lightPos.y());
-                yMax = Math.max(yMax, lightPos.y());
-                final BlockPos lightBlockPos = new BlockPos(Mth.floor(lightPos.x()), Mth.floor(lightPos.y() + 0.1), Mth.floor(lightPos.z()));
+                final Vec3 lightPos = precise
+                        ? chunkOrigin.add(pieceMat.getTranslationPart().toVec3())
+                        : pieceMat.getTranslationPart().toVec3();
+                yMin = Math.min(yMin, (float) lightPos.y);
+                yMax = Math.max(yMax, (float) lightPos.y);
+                final BlockPos lightBlockPos = new BlockPos(Mth.floor(lightPos.x), Mth.floor(lightPos.y + 0.1), Mth.floor(lightPos.z));
                 final int light = LightTexture.pack(world.getBrightness(LightLayer.BLOCK, lightBlockPos), world.getBrightness(LightLayer.SKY, lightBlockPos));
                 combinedModel.appendTransformed(railModel, pieceMat, entry.getKey().color, light);
             }
@@ -78,7 +85,17 @@ public class MeshBuildingRailChunk extends RailChunkBase {
         if (railModel == null) return;
 
         if (vertArrays == null) return;
-        VertAttrState attrState = new VertAttrState().setModelMatrix(shaderProp.viewMatrix).setOverlayUVNoOverlay();
+        Matrix4f modelMatrix;
+        if (ClientConfig.precisionFix) {
+            // 顶点是区块相对坐标，模型矩阵只需补上「本区块相对相机」的位移
+            Vec3 cameraPos = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
+            Vec3 chunkOrigin = getChunkOrigin();
+            modelMatrix = RailChunkBase.cameraRelativeMatrix(shaderProp.viewMatrix,
+                    chunkOrigin.x - cameraPos.x, chunkOrigin.y - cameraPos.y, chunkOrigin.z - cameraPos.z);
+        } else {
+            modelMatrix = shaderProp.viewMatrix;
+        }
+        VertAttrState attrState = new VertAttrState().setModelMatrix(modelMatrix).setOverlayUVNoOverlay();
         if (!RailRenderDispatcher.isHoldingRailItem) attrState.setColor(-1);
         batchManager.enqueue(vertArrays, new EnqueueProp(attrState), ShaderProp.DEFAULT);
     }

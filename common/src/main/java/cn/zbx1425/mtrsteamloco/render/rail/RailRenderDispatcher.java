@@ -4,6 +4,7 @@ import cn.zbx1425.mtrsteamloco.ClientConfig;
 import cn.zbx1425.mtrsteamloco.data.RailExtraSupplier;
 import cn.zbx1425.mtrsteamloco.data.RailModelRegistry;
 import cn.zbx1425.mtrsteamloco.gui.SelectListScreen;
+import cn.zbx1425.mtrsteamloco.render.RenderSpace;
 import cn.zbx1425.mtrsteamloco.mixin.LevelRendererAccessor;
 import cn.zbx1425.sowcer.batch.BatchManager;
 import cn.zbx1425.sowcer.batch.ShaderProp;
@@ -189,6 +190,8 @@ public class RailRenderDispatcher {
             }
         }
 
+        // 轨道脚本模型的父矩阵要统一成 R*T(-cam)，否则在去掉栈内相机平移的宿主上会整体偏移
+        Matrix4f scriptViewMatrix = RenderSpace.normalizeView(viewMatrix);
         Collection<BakedRail> bakedRails = railRefMap.values();
         for (BakedRail rail : bakedRails) {
             RailModelProperties prop = rail.getProperties();
@@ -197,28 +200,33 @@ public class RailRenderDispatcher {
             }
             if (rail.scriptContext == null) continue;
             prop.script.tryCallRenderFunctionAsync(rail.scriptContext);
-            rail.scriptContext.commit(drawScheduler, viewMatrix, cullingFrustum, cameraPos, maxRailDistance);
+            rail.scriptContext.commit(drawScheduler, scriptViewMatrix, cullingFrustum, cameraPos, maxRailDistance);
         }
     }
 
     public void drawRailNodes(Level level, DrawScheduler drawScheduler, Matrix4f viewMatrix) {
         if (isHoldingRailItemOrBrush) {
+            // 节点用世界坐标定位，先在 double 下换成相机相对位移再写进矩阵，
+            // 否则 float 在远处会把平移列的数量级差吃掉，节点会错位
+            Vec3 cameraPos = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
             HashSet<BlockPos> drawnNodes = new HashSet<>();
             for (Map.Entry<BlockPos, Map<BlockPos, Rail>> entryStart : ClientData.RAILS.entrySet()) {
                 for (Map.Entry<BlockPos, Rail> entryEnd : entryStart.getValue().entrySet()) {
                     if (drawnNodes.add(entryStart.getKey())) {
-                        Matrix4f nodePose = viewMatrix.copy();
-                        nodePose.translate(entryStart.getKey().getX() + 0.5f,
-                                entryStart.getKey().getY(), entryStart.getKey().getZ() + 0.5f);
+                        Matrix4f nodePose = RailChunkBase.cameraRelativeMatrix(viewMatrix,
+                                entryStart.getKey().getX() + 0.5 - cameraPos.x,
+                                entryStart.getKey().getY() - cameraPos.y,
+                                entryStart.getKey().getZ() + 0.5 - cameraPos.z);
                         nodePose.rotateY(-(float) entryEnd.getValue().facingStart.angleRadians + (float) Math.PI / 2);
                         final int light = LightTexture.pack(level.getBrightness(LightLayer.BLOCK, entryStart.getKey()),
                                 level.getBrightness(LightLayer.SKY, entryStart.getKey()));
                         drawScheduler.enqueue(RailModelRegistry.railNodeModel, nodePose, light);
                     }
                     if (drawnNodes.add(entryEnd.getKey())) {
-                        Matrix4f nodePose = viewMatrix.copy();
-                        nodePose.translate(entryEnd.getKey().getX() + 0.5f,
-                                entryEnd.getKey().getY(), entryEnd.getKey().getZ() + 0.5f);
+                        Matrix4f nodePose = RailChunkBase.cameraRelativeMatrix(viewMatrix,
+                                entryEnd.getKey().getX() + 0.5 - cameraPos.x,
+                                entryEnd.getKey().getY() - cameraPos.y,
+                                entryEnd.getKey().getZ() + 0.5 - cameraPos.z);
                         nodePose.rotateY(-(float) entryEnd.getValue().facingEnd.angleRadians + (float) Math.PI / 2);
                         final int light = LightTexture.pack(level.getBrightness(LightLayer.BLOCK, entryEnd.getKey()),
                                 level.getBrightness(LightLayer.SKY, entryEnd.getKey()));
@@ -252,16 +260,20 @@ public class RailRenderDispatcher {
     }
 
     public void drawBoundingBoxes(PoseStack matrixStack, VertexConsumer buffer) {
+        // 包围盒是世界坐标；若宿主已去掉栈里的相机平移，这里要自己减掉
+        Vec3 worldToStack = RenderSpace.worldShift();
         for (RailChunkBase chunk : railChunkList) {
             boolean isChunkEven = chunk.isEven();
-            LevelRenderer.renderLineBox(matrixStack, buffer, chunk.boundingBox,
+            LevelRenderer.renderLineBox(matrixStack, buffer, chunk.boundingBox.move(worldToStack),
                     1.0f, isChunkEven ? 1.0f : 0.0f, isChunkEven ? 0.0f : 1.0f, 1.0f);
 #if DEBUG
+            Vec3 debugChunkOrigin = chunk.getChunkOrigin();
             for (ArrayList<Matrix4f> rail : chunk.containingRails.values()) {
                 for (Matrix4f pieceMat : rail) {
-                    final Vector3f lightPos = pieceMat.getTranslationPart();
-                    final BlockPos lightBlockPos = new BlockPos(lightPos.x(), lightPos.y() + 0.1, lightPos.z());
-                    LevelRenderer.renderLineBox(matrixStack, buffer, new AABB(lightBlockPos),
+                    // 片段矩阵现在是区块相对坐标，加回区块原点才是世界坐标
+                    final Vec3 lightPos = debugChunkOrigin.add(pieceMat.getTranslationPart().toVec3());
+                    final BlockPos lightBlockPos = new BlockPos(Mth.floor(lightPos.x), Mth.floor(lightPos.y + 0.1), Mth.floor(lightPos.z));
+                    LevelRenderer.renderLineBox(matrixStack, buffer, new AABB(lightBlockPos).move(worldToStack),
                             1.0f, isChunkEven ? 1.0f : 0.0f, isChunkEven ? 0.0f : 1.0f, 1.0f);
                 }
             }

@@ -1,6 +1,7 @@
 package cn.zbx1425.mtrsteamloco.render.rail;
 
 import cn.zbx1425.mtrsteamloco.Main;
+import cn.zbx1425.mtrsteamloco.ClientConfig;
 import cn.zbx1425.mtrsteamloco.data.RailModelRegistry;
 import cn.zbx1425.mtrsteamloco.render.ByteBufferOutputStream;
 import cn.zbx1425.sowcer.batch.BatchManager;
@@ -20,11 +21,13 @@ import cn.zbx1425.sowcer.vertex.VertAttrSrc;
 import cn.zbx1425.sowcer.vertex.VertAttrState;
 import cn.zbx1425.sowcer.vertex.VertAttrType;
 import com.google.common.io.LittleEndianDataOutputStream;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.phys.Vec3;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -65,6 +68,9 @@ public class InstancedRailChunk extends RailChunkBase {
         super.rebuildBuffer(world);
         if (vertArrays == null) return;
 
+        // 实例矩阵里只存区块相对坐标，取光照时加回区块原点换回世界坐标
+        final boolean precise = ClientConfig.precisionFix;
+        Vec3 chunkOrigin = getChunkOrigin();
         int instanceCount = containingRails.values().stream().mapToInt(ArrayList::size).sum();
         float yMin = 256, yMax = -64;
 
@@ -78,10 +84,12 @@ public class InstancedRailChunk extends RailChunkBase {
                 try {
                     oStream.writeInt(entry.getKey().color);
 
-                    final Vector3f lightPos = pieceMat.getTranslationPart();
-                    yMin = Math.min(yMin, lightPos.y());
-                    yMax = Math.max(yMax, lightPos.y());
-                    final BlockPos lightBlockPos = new BlockPos(Mth.floor(lightPos.x()), Mth.floor(lightPos.y() + 0.1), Mth.floor(lightPos.z()));
+                    final Vec3 lightPos = precise
+                            ? chunkOrigin.add(pieceMat.getTranslationPart().toVec3())
+                            : pieceMat.getTranslationPart().toVec3();
+                    yMin = Math.min(yMin, (float) lightPos.y);
+                    yMax = Math.max(yMax, (float) lightPos.y);
+                    final BlockPos lightBlockPos = new BlockPos(Mth.floor(lightPos.x), Mth.floor(lightPos.y + 0.1), Mth.floor(lightPos.z));
                     final int light = LightTexture.pack(world.getBrightness(LightLayer.BLOCK, lightBlockPos), world.getBrightness(LightLayer.SKY, lightBlockPos));
                     oStream.writeInt(light);
 
@@ -113,7 +121,16 @@ public class InstancedRailChunk extends RailChunkBase {
         if (instanceBuf.size < 1) return;
         VertAttrState attrState = new VertAttrState().setOverlayUVNoOverlay();
         if (!RailRenderDispatcher.isHoldingRailItem) attrState.setColor(-1);
-        batchManager.enqueue(vertArrays, new EnqueueProp(attrState), shaderProp);
+        if (ClientConfig.precisionFix) {
+            // 实例矩阵是区块相对坐标，父矩阵补上「本区块相对相机」的位移
+            Vec3 cameraPos = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
+            Vec3 chunkOrigin = getChunkOrigin();
+            Matrix4f chunkMatrix = RailChunkBase.cameraRelativeMatrix(shaderProp.viewMatrix,
+                    chunkOrigin.x - cameraPos.x, chunkOrigin.y - cameraPos.y, chunkOrigin.z - cameraPos.z);
+            batchManager.enqueue(vertArrays, new EnqueueProp(attrState), new ShaderProp().setViewMatrix(chunkMatrix));
+        } else {
+            batchManager.enqueue(vertArrays, new EnqueueProp(attrState), shaderProp);
+        }
     }
 
     @Override

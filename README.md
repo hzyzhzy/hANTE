@@ -113,7 +113,20 @@ ATP 默认开启；超过 ATP 红针会触发紧急制动。需要完全手动�
 
 ## 版本
 
-当前版本：**1.1.5**，基线为上游 `alpha` 的 `0506691f`。
+当前版本：**1.1.6**（预发布），基线为上游 `alpha` 的 `0506691f`。
+
+### 1.1.6 主要变更
+
+- 新增 **【实验性】修复远坐标抖动**（默认开启）：hANTE 自己的几何体（轨道、装饰物件、
+  脚本列车、节点方块、距离标签）改为「以轨道区块为基准烘焙 + 相机相对矩阵」，
+  世界坐标只保留在 double 侧。修复远离出生点后的轨道抖动，以及超过约 1000 万格后
+  轨道直接消失的问题；
+- 新增 **【实验性】开启 MTR 距离现象修复（Mixin）**（默认关闭）：直接改写 MTR 自身
+  渲染中的世界坐标平移，覆盖列车、屏蔽门、吊板、指示牌、线路图。
+  注意：开启后乘坐列车时车厢可能错位，且宿主已经修好距离现象时（如 YMTR 3.6.4）不需要它；
+- 配置界面重组：新增 **视角** 分页（视角滚转、视角惯性、惯性强度、回弹速度、余晃时间），
+  实验性项目统一收进 **实验性** 分页并统一为「实验性：」前缀，JS 调试信息置于该页最前；
+- 配置界面标题改为「hANTE 客户端配置」。
 
 ### 1.1.5 主要变更
 
@@ -307,7 +320,24 @@ that never enters view occupies no model memory at all.
 
 ## Version
 
-Current version: **1.1.5**, based on upstream `alpha` at `0506691f`.
+Current version: **1.1.6** (pre-release), based on upstream `alpha` at `0506691f`.
+
+### 1.1.6 highlights
+
+- Added **Experimental: Fix Far-Coordinate Jitter** (on by default). hANTE's own geometry
+  (rails, eye candy, scripted trains, node blocks, distance labels) is now baked relative to
+  rail chunks and drawn with camera-relative matrices, keeping world coordinates in double
+  precision. Fixes rail wobble far from spawn and the rails disappearing beyond roughly
+  10 million blocks;
+- added **Experimental: Enable MTR Distance-Fix (Mixin)** (off by default). It rewrites the
+  world-coordinate translation inside MTR's own rendering, covering trains, platform screen
+  doors, hanging panels, signs and route maps. Note: while riding a train the car may be
+  misplaced, and hosts that already fixed the distance phenomenon (e.g. YMTR 3.6.4) do not
+  need it;
+- config screen rework: new **View** page (camera rolling, camera inertia, strength,
+  stiffness, damping); all experimental options moved into the **Experimental** page and
+  renamed with an "Experimental:" prefix, with the JS debug toggle listed first;
+- the config screen title is now "hANTE Client Config".
 
 ### 1.1.5 highlights
 

@@ -1,6 +1,10 @@
 package cn.zbx1425.mtrsteamloco.render.scripting.train;
 
 import cn.zbx1425.mtrsteamloco.MainClient;
+import net.minecraft.client.Minecraft;
+import cn.zbx1425.mtrsteamloco.render.rail.RailChunkBase;
+import cn.zbx1425.mtrsteamloco.render.RenderSpace;
+import cn.zbx1425.mtrsteamloco.ClientConfig;
 import cn.zbx1425.mtrsteamloco.render.RenderUtil;
 import cn.zbx1425.mtrsteamloco.render.scripting.ScriptContextManager;
 import cn.zbx1425.mtrsteamloco.render.scripting.ScriptHolder;
@@ -66,7 +70,11 @@ public class ScriptedTrainRenderer extends TrainRendererBase {
         final BlockPos posAverage = applyAverageTransform(train.getViewOffset(), x, y, z);
 
         final boolean hasPitch = pitch < 0 ? train.transportMode.hasPitchAscending : train.transportMode.hasPitchDescending;
-        Matrix4f worldPose = new Matrix4f(matrices.last().pose()).copy();
+        // rawPose 保持宿主原样（原版 R*T(-cam)，已修复的 YMTR 是 R）：
+        // 它的平移列在「已修复」宿主上正好是 0，后续叠加小位移时不会出现大数相消。
+        Matrix4f rawPose = new Matrix4f(matrices.last().pose()).copy();
+        // worldPose 统一成 R*T(-cam)，给脚本绘制与声源定位用（它们按世界坐标工作）。
+        Matrix4f worldPose = RenderSpace.normalizeView(rawPose.copy());
 
         float roll = TrainExtraSupplier.getRollAngleAt(train, carIndex);
         boolean isReversed = train.isReversed();
@@ -108,8 +116,19 @@ public class ScriptedTrainRenderer extends TrainRendererBase {
         final int light = LightTexture.pack(world.getBrightness(LightLayer.BLOCK, posAverage), world.getBrightness(LightLayer.SKY, posAverage));
         
         if (shouldRender) {
-            Matrix4f basePose = worldPose.copy();
-            basePose.translate((float) x, (float) y, (float) z);
+            // basePose 是 rawPose 的**副本**，改写它的平移列不会影响宿主栈。
+            // 统一做法：平移列直接置为 R*(车厢坐标 - 相机坐标)，全程 double 计算后一次写回。
+            // 这一步既避免了「两个 1e7 相减」的抖动，也避免了坐标被量化成整格导致的卡顿。
+            Matrix4f basePose = rawPose.copy();
+            if (ClientConfig.precisionFix && train.getViewOffset() == null) {
+                Vec3 carCameraPos = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
+                RailChunkBase.setCameraRelativeTranslation(basePose,
+                        x - carCameraPos.x, y - carCameraPos.y, z - carCameraPos.z);
+            } else {
+                // 玩家在车上时坐标已含玩家偏移、栈形态也不同，保持原来的叠加方式
+                final Vec3 carShift = RenderSpace.worldShift();
+                basePose.translate((float)(x + carShift.x), (float)(y + carShift.y), (float)(z + carShift.z));
+            }
             basePose.rotateY((float) Math.PI + yaw);
             basePose.rotateX(hasPitch ? pitch : 0);
             basePose.translate(0, -1, 0);
@@ -141,9 +160,11 @@ public class ScriptedTrainRenderer extends TrainRendererBase {
 
         final BlockPos posAverage = applyAverageTransform(train.getViewOffset(), x, y, z);
         if (posAverage == null) return;
-        Matrix4f worldPose = new Matrix4f(matrices.last().pose()).copy();
+        Matrix4f worldPose = RenderSpace.normalizeView(new Matrix4f(matrices.last().pose()).copy());
         matrices.pushPose();
-        matrices.translate(x, y, z);
+        // pose stack 本身没有归一化，这里补上「世界坐标 - 相机坐标」
+        final Vec3 connShift = RenderSpace.worldShift();
+        matrices.translate(x + connShift.x, y + connShift.y, z + connShift.z);
         PoseStackUtil.rotY(matrices, (float) Math.PI + yaw);
         final boolean hasPitch = pitch < 0 ? train.transportMode.hasPitchAscending : train.transportMode.hasPitchDescending;
         PoseStackUtil.rotX(matrices, hasPitch ? pitch : 0);

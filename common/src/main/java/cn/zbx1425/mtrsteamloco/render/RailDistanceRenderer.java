@@ -75,7 +75,9 @@ public class RailDistanceRenderer {
         final float roll = RailExtraSupplier.getRollAngle(rail, i);
 
         matrices.pushPose();
-        matrices.translate((float) last.x, (float) last.y, (float) last.z);
+        // 宿主若已去掉栈内相机平移，这里要在 double 下自己减，否则远处会偏一整屏
+        final Vec3 shift = RenderSpace.worldShift();
+        matrices.translate((float)(last.x + shift.x), (float)(last.y + shift.y), (float)(last.z + shift.z));
         PoseStackUtil.rotY(matrices, yaw);
         PoseStackUtil.rotX(matrices, -pitch);
         PoseStackUtil.rotZ(matrices, roll);// ((RailExtraSupplier) rail).getRenderReversed() ? -roll : 

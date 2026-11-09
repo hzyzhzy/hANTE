@@ -1,5 +1,6 @@
 package cn.zbx1425.mtrsteamloco.render.rail;
 
+import cn.zbx1425.mtrsteamloco.ClientConfig;
 import cn.zbx1425.mtrsteamloco.data.RailExtraSupplier;
 import cn.zbx1425.mtrsteamloco.data.RailModelRegistry;
 import cn.zbx1425.sowcer.math.Matrix4f;
@@ -47,9 +48,18 @@ public class BakedRail {
                 Vec3 thi = rail.getPosition(i);
                 Vec3 mid = rail.getPosition(i - interval / 2);
                 float roll = RailExtraSupplier.getRollAngle(rail, i - interval / 2);
+                // 关键：矩阵里只存「区块相对坐标」，不要把世界坐标塞进 float。
+                // 远处坐标（百万级以上）下 float 精度不足以区分相邻轨道片，会抖动甚至消失。
+                final Vec3 bakePos;
+                if (ClientConfig.precisionFix) {
+                    Vec3 chunkOrigin = new Vec3((int) mid.x & ~31, 0, (int) mid.z & ~31);
+                    bakePos = mid.subtract(chunkOrigin);
+                } else {
+                    bakePos = mid;
+                }
                 coveredChunks
                     .computeIfAbsent(chunkIdFromWorldPos((int) mid.x, (int) mid.z), ignored -> new ArrayList<>())
-                    .add(getLookAtMat(mid, pre, thi, roll, yOffset, reverse));
+                    .add(getLookAtMat(bakePos, pre, thi, roll, yOffset, reverse));
                 pre = thi;
             }
         }
@@ -65,8 +75,12 @@ public class BakedRail {
         return RailModelRegistry.getProperty(modelKey);
     }
 
-    public static long chunkIdFromWorldPos(float bpX, float bpZ) {
-        return ((long)((int)bpX >> (4 + POS_SHIFT)) << 32) | ((long)((int)bpZ >> (4 + POS_SHIFT)) & 0xFFFFFFFFL);
+    /**
+     * 用 int 而不是 float 接收坐标：float 在 1000 万格处无法区分相邻方块，
+     * 会把轨道片分配到错误的区块，导致远处轨道整段消失。
+     */
+    public static long chunkIdFromWorldPos(int bpX, int bpZ) {
+        return ((long)(bpX >> (4 + POS_SHIFT)) << 32) | ((long)(bpZ >> (4 + POS_SHIFT)) & 0xFFFFFFFFL);
     }
 
     public static long chunkIdFromSectPos(int spX, int spZ) {

@@ -86,7 +86,7 @@
     "gui.mtrsteamloco.error.title": "ANTE Resource Loading Error",
     "gui.mtrsteamloco.error.explain": "If you're a regular user, click Cancel. Resource pack authors may review error details.\nThis is likely caused by faulty resource packs, but could also stem from other ANTE-using mods or ANTE bugs.",
     "gui.mtrsteamloco.error.invalid_value": "Invalid value",
-    "gui.mtrsteamloco.config.client.title": "ANTE Client Config",
+    "gui.mtrsteamloco.config.client.title": "hANTE Client Config",
     "gui.mtrsteamloco.config.client.category.common": "General",
     "gui.mtrsteamloco.config.client.category.misc": "Miscellaneous",
     "gui.mtrsteamloco.config.client.shaderactive": "3D rail features and rendering optimizations disabled due to Optifine conflict.",
@@ -175,5 +175,11 @@
     "gui.mtr.drive.stop_status": "Stop %s",
     "gui.mtr.drive.this_station": "This ",
     "gui.mtr.drive.unit_kmh": "km/h",
-    "key.mtrsteamloco.train_neutral": "Neutral"
+    "key.mtrsteamloco.train_neutral": "Neutral",
+    "gui.mtrsteamloco.config.client.precisionfix": "Experimental: Fix Far-Coordinate Jitter",
+    "gui.mtrsteamloco.config.client.precisionfix.tooltip": "Bakes ANTE's own geometry (rails, eye candy, scripted trains, node blocks) relative to rail chunks and keeps world coordinates in double precision, so they stop wobbling far from spawn. Hosts that already fixed the distance phenomenon do not need this.",
+    "gui.mtrsteamloco.config.client.mixinmtrprecision": "Experimental: Enable MTR Distance-Fix (Mixin)",
+    "gui.mtrsteamloco.config.client.mixinmtrprecision.tooltip": "Patches MTR's own rendering so trains, platform screen doors, hanging panels, route maps and signs stop wobbling far from spawn, and so trains do not shimmer while moving. It rewrites the world-coordinate translate() calls inside MTR into camera-relative ones. Experimental: it may misplace the train you are riding or other MTR objects. Leave it OFF unless you need it.",
+    "gui.mtrsteamloco.config.client.category.experimental": "Experimental",
+    "gui.mtrsteamloco.config.client.category.view": "View"
 }

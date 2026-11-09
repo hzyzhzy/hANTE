@@ -13,6 +13,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -74,7 +75,9 @@ public class RailPicker {
         };
 
         matrices.pushPose();
-        matrices.translate(pickedPosStart.getX(), pickedPosStart.getY(), pickedPosStart.getZ());
+        // 宿主若已把相机平移从 pose stack 去掉（YMTR 距离现象修复），这里要自己减
+        final Vec3 pickShift = RenderSpace.worldShift();
+        matrices.translate(pickedPosStart.getX() + pickShift.x, pickedPosStart.getY() + pickShift.y, pickedPosStart.getZ() + pickShift.z);
         matrices.translate(0.5, 0.5, 0.5);
         matrices.mulPose(Minecraft.getInstance().gameRenderer.getMainCamera().rotation());
         matrices.scale(-0.025F, -0.025F, 0.025F);

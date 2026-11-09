@@ -28,6 +28,24 @@ public class ClientConfig {
     private static Path path;
 
     public static boolean enableOptimization = true;
+    /**
+     * 修复浮点精度问题导致的抖动（远坐标下轨道/列车抖动、乃至消失）。
+     * <p>
+     * 开启后 ANTE 自己的渲染改用「区块相对几何 + 相机相对矩阵」：顶点与矩阵里只保存
+     * 小块数值，世界坐标的大数值始终留在 double 侧。同时兼容 YMTR 上游「距离现象修复」
+     * （提交 80395926）那种把相机平移从 pose stack 里去掉的宿主。
+     * <p>
+     * 默认开启。若遇到个别光影/渲染异常可关闭，关闭后行为与 1.1.5 完全一致。
+     */
+    public static boolean precisionFix = true;
+    /**
+     * 是否用 Mixin 直接改写 MTR 自己列车渲染器里的 {@code matrices.translate(x, y, z)}。
+     * <p>
+     * 开启后远处列车不再抖动，但「坐在车上」时 MTR 给的 pose stack 与平时不同，
+     * 改写平移列会把车厢推到错误位置（表现为上车后车厢模型消失）。
+     * 因此默认关闭；若宿主本身已修好距离现象（YMTR 3.6.4），也不需要它。
+     */
+    public static boolean mixinMtrPrecision = false;
     public static boolean enableBbModelPreload = false;
     public static boolean experimentalLazyTrainModels = false;
     public static boolean experimentalLazyEyeCandyModels = false;
@@ -80,6 +98,8 @@ public class ClientConfig {
         try {
             JsonObject configObject = Main.JSON_PARSER.parse(Files.readString(path)).getAsJsonObject();
             enableOptimization = !getOrDefault(configObject, "shaderCompatMode", JsonElement::getAsBoolean, false);
+            precisionFix = getOrDefault(configObject, "precisionFix", JsonElement::getAsBoolean, true);
+            mixinMtrPrecision = getOrDefault(configObject, "mixinMtrPrecision", JsonElement::getAsBoolean, false);
             enableBbModelPreload = getOrDefault(configObject, "enableBbModelPreload", JsonElement::getAsBoolean, false);
             experimentalLazyTrainModels = getOrDefault(configObject, "experimentalLazyTrainModels", JsonElement::getAsBoolean, false);
             experimentalLazyEyeCandyModels = getOrDefault(configObject, "experimentalLazyEyeCandyModels", JsonElement::getAsBoolean, false);
@@ -157,6 +177,8 @@ public class ClientConfig {
             if (path == null) return;
             JsonObject configObject = new JsonObject();
             configObject.addProperty("shaderCompatMode", !enableOptimization);
+            configObject.addProperty("precisionFix", precisionFix);
+            configObject.addProperty("mixinMtrPrecision", mixinMtrPrecision);
             configObject.addProperty("enableBbModelPreload", enableBbModelPreload);
             configObject.addProperty("experimentalLazyTrainModels", experimentalLazyTrainModels);
             configObject.addProperty("experimentalLazyEyeCandyModels", experimentalLazyEyeCandyModels);

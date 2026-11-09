@@ -1,6 +1,9 @@
 package cn.zbx1425.mtrsteamloco.render.block;
 
 import cn.zbx1425.mtrsteamloco.MainClient;
+import cn.zbx1425.mtrsteamloco.ClientConfig;
+import cn.zbx1425.mtrsteamloco.render.RenderSpace;
+import cn.zbx1425.mtrsteamloco.render.rail.RailChunkBase;
 import cn.zbx1425.mtrsteamloco.block.BlockDirectNode.BlockEntityDirectNode;
 import cn.zbx1425.mtrsteamloco.data.EyeCandyProperties;
 import cn.zbx1425.mtrsteamloco.data.EyeCandyRegistry;
@@ -104,7 +107,9 @@ public class BlockEntityDirectNodeRenderer extends BlockEntityRendererMapper<Blo
 
     public static void commit(@NotNull PoseStack matrices, @NotNull MultiBufferSource vertexConsumers) {
         if (VERTICAL_MODEL == null || CONNECTION_MODEL == null) return;
-        Matrix4f worldPose = new Matrix4f(matrices.last().pose()).copy();
+        Matrix4f rawPose = new Matrix4f(matrices.last().pose()).copy();
+        Matrix4f worldPose = RenderSpace.normalizeView(rawPose.copy());
+        final Vec3 nodeCameraPos = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
         HashSet<BlockEntityDirectNode> temp = new HashSet<>(entitysToRender);
         for (BlockEntityDirectNode blockEntity : temp) {
             if (blockEntity == null) continue;
@@ -114,9 +119,17 @@ public class BlockEntityDirectNodeRenderer extends BlockEntityRendererMapper<Blo
 
             int light = LevelRenderer.getLightColor(world, blockEntity.getBlockPos());;
 
-            Matrix4f basePose = worldPose.copy();
             final BlockPos pos = blockEntity.getBlockPos();
-            basePose.translate(pos.getX() + 0.5F, pos.getY() + 0.5F, pos.getZ() + 0.5F);
+            Matrix4f basePose;
+            if (ClientConfig.precisionFix) {
+                basePose = RailChunkBase.cameraRelativeMatrix(rawPose,
+                        pos.getX() + 0.5 - nodeCameraPos.x,
+                        pos.getY() + 0.5 - nodeCameraPos.y,
+                        pos.getZ() + 0.5 - nodeCameraPos.z);
+            } else {
+                basePose = rawPose.copy();
+                basePose.translate(pos.getX() + 0.5F, pos.getY() + 0.5F, pos.getZ() + 0.5F);
+            }
 
             RailAngle railAngle = blockEntity.getRailAngle();
             if (railAngle == null) {
