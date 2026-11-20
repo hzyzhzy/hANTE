@@ -89,6 +89,18 @@ public abstract class RailChunkBase implements Closeable {
     }
 
     /**
+     * 当前是否使用「区块相对几何 + 相机相对矩阵」这套精度路径。
+     * <p>
+     * 光影（Iris/Oculus）下 MODEL_VIEW 里已经带了相机旋转，模型矩阵再带一次就会
+     * 出现「轨道随视角转动」；因此光影生效时退回 1.1.5 的写法（世界坐标烘焙 +
+     * 直接用宿主 viewMatrix），只在不带光影时启用精度路径。
+     */
+    public static boolean usePreciseGeometry() {
+        return cn.zbx1425.mtrsteamloco.ClientConfig.precisionFix
+                && !cn.zbx1425.mtrsteamloco.render.ShadersModHandler.canUseCustomShader();
+    }
+
+    /**
      * 该区块在**世界坐标**中的原点（X/Z 对齐到区块，Y 固定为 0）。
      * <p>
      * 轨道几何现在一律以「区块相对坐标」烘焙：顶点与实例矩阵里只保存 0~32 范围的

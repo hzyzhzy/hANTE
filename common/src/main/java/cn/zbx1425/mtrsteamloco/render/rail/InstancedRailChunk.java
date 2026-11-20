@@ -69,7 +69,7 @@ public class InstancedRailChunk extends RailChunkBase {
         if (vertArrays == null) return;
 
         // 实例矩阵里只存区块相对坐标，取光照时加回区块原点换回世界坐标
-        final boolean precise = ClientConfig.precisionFix;
+        final boolean precise = RailChunkBase.usePreciseGeometry();
         Vec3 chunkOrigin = getChunkOrigin();
         int instanceCount = containingRails.values().stream().mapToInt(ArrayList::size).sum();
         float yMin = 256, yMax = -64;
@@ -121,7 +121,7 @@ public class InstancedRailChunk extends RailChunkBase {
         if (instanceBuf.size < 1) return;
         VertAttrState attrState = new VertAttrState().setOverlayUVNoOverlay();
         if (!RailRenderDispatcher.isHoldingRailItem) attrState.setColor(-1);
-        if (ClientConfig.precisionFix) {
+        if (RailChunkBase.usePreciseGeometry()) {
             // 实例矩阵是区块相对坐标，父矩阵补上「本区块相对相机」的位移
             Vec3 cameraPos = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
             Vec3 chunkOrigin = getChunkOrigin();

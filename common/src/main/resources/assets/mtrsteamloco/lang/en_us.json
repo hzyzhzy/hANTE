@@ -181,5 +181,7 @@
     "gui.mtrsteamloco.config.client.mixinmtrprecision": "Experimental: Enable MTR Distance-Fix (Mixin)",
     "gui.mtrsteamloco.config.client.mixinmtrprecision.tooltip": "Patches MTR's own rendering so trains, platform screen doors, hanging panels, route maps and signs stop wobbling far from spawn, and so trains do not shimmer while moving. It rewrites the world-coordinate translate() calls inside MTR into camera-relative ones. Experimental: it may misplace the train you are riding or other MTR objects. Leave it OFF unless you need it.",
     "gui.mtrsteamloco.config.client.category.experimental": "Experimental",
-    "gui.mtrsteamloco.config.client.category.view": "View"
+    "gui.mtrsteamloco.config.client.category.view": "View",
+    "gui.mtrsteamloco.config.client.slim_model_memory": "Experimental: Slim model memory",
+    "gui.mtrsteamloco.config.client.slim_model_memory.description": "After a model is uploaded to the GPU, drop the CPU-side vertex and face data of its opaque parts. This noticeably lowers heap usage with large addon packs. Translucent parts and the copies needed by shader-compat mode are kept, and switching render mode reloads resources automatically."
 }

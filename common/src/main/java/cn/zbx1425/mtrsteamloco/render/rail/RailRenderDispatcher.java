@@ -139,8 +139,21 @@ public class RailRenderDispatcher {
         }
     }
 
+    /** 上一次分帧时的精度模式；光影开关切换后需要重新烘焙几何。 */
+    private boolean lastPreciseMode = RailChunkBase.usePreciseGeometry();
+
     public void drawRails(Level level, DrawScheduler drawScheduler, Matrix4f viewMatrix) {
         BatchManager batchManager = drawScheduler.batchManager;
+
+        // 光影生效与否会改变几何的烘焙坐标系（见 RailChunkBase.usePreciseGeometry），
+        // 模式一变就整批重建，避免用旧的坐标系继续画。
+        boolean preciseNow = RailChunkBase.usePreciseGeometry();
+        if (preciseNow != lastPreciseMode) {
+            lastPreciseMode = preciseNow;
+            clearRail();
+            currentFrameRails.clear();
+            return;
+        }
         boolean shouldBeInstanced = ClientConfig.getRailRenderLevel() == 3;
         if (isInstanced != shouldBeInstanced) clearRail();
         isInstanced = shouldBeInstanced;

@@ -181,5 +181,7 @@
     "gui.mtrsteamloco.config.client.mixinmtrprecision": "实验性：开启 MTR 距离现象修复（Mixin）",
     "gui.mtrsteamloco.config.client.mixinmtrprecision.tooltip": "修改 MTR 自身的渲染，使列车、屏蔽门、吊板、线路图、指示牌在远处不再抖动，并修复列车行驶过程中的抖动。做法是把 MTR 里按世界坐标调用的 translate() 改写为相机相对坐标。实验性：可能导致所乘坐的车厢或其它 MTR 物件错位，除非确实需要，建议保持关闭。",
     "gui.mtrsteamloco.config.client.category.experimental": "实验性",
-    "gui.mtrsteamloco.config.client.category.view": "视角"
+    "gui.mtrsteamloco.config.client.category.view": "视角",
+    "gui.mtrsteamloco.config.client.slim_model_memory": "实验性：模型内存精简",
+    "gui.mtrsteamloco.config.client.slim_model_memory.description": "模型上传到 GPU 后，释放不透明部分的 CPU 侧顶点与面数据，显著降低大整合包的内存占用。半透明部分与光影兼容模式所需的副本会保留；切换渲染模式时会自动重新加载资源。"
 }

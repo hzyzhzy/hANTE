@@ -46,6 +46,16 @@ public class ClientConfig {
      * 因此默认关闭；若宿主本身已修好距离现象（YMTR 3.6.4），也不需要它。
      */
     public static boolean mixinMtrPrecision = false;
+    /**
+     * 实验性：模型内存精简。
+     * <p>
+     * 模型上传到 GPU 之后，CPU 侧的顶点/面数据对「快速渲染通道」已经没用了
+     * （只有顶点缓冲通道、半透明排序和光影兼容模式才需要）。开启后会把每个模型簇
+     * <b>不透明部分</b>的 CPU 副本释放掉，可显著降低大整合包的堆占用。
+     * <p>
+     * 半透明部分保留（排序要用）；光影兼容模式下自动失效，切换时会重新加载资源。
+     */
+    public static boolean experimentalSlimModelMemory = false;
     public static boolean enableBbModelPreload = false;
     public static boolean experimentalLazyTrainModels = false;
     public static boolean experimentalLazyEyeCandyModels = false;
@@ -100,6 +110,7 @@ public class ClientConfig {
             enableOptimization = !getOrDefault(configObject, "shaderCompatMode", JsonElement::getAsBoolean, false);
             precisionFix = getOrDefault(configObject, "precisionFix", JsonElement::getAsBoolean, true);
             mixinMtrPrecision = getOrDefault(configObject, "mixinMtrPrecision", JsonElement::getAsBoolean, false);
+            experimentalSlimModelMemory = getOrDefault(configObject, "experimentalSlimModelMemory", JsonElement::getAsBoolean, false);
             enableBbModelPreload = getOrDefault(configObject, "enableBbModelPreload", JsonElement::getAsBoolean, false);
             experimentalLazyTrainModels = getOrDefault(configObject, "experimentalLazyTrainModels", JsonElement::getAsBoolean, false);
             experimentalLazyEyeCandyModels = getOrDefault(configObject, "experimentalLazyEyeCandyModels", JsonElement::getAsBoolean, false);
@@ -179,6 +190,7 @@ public class ClientConfig {
             configObject.addProperty("shaderCompatMode", !enableOptimization);
             configObject.addProperty("precisionFix", precisionFix);
             configObject.addProperty("mixinMtrPrecision", mixinMtrPrecision);
+            configObject.addProperty("experimentalSlimModelMemory", experimentalSlimModelMemory);
             configObject.addProperty("enableBbModelPreload", enableBbModelPreload);
             configObject.addProperty("experimentalLazyTrainModels", experimentalLazyTrainModels);
             configObject.addProperty("experimentalLazyEyeCandyModels", experimentalLazyEyeCandyModels);

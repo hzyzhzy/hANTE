@@ -20,9 +20,11 @@ import java.util.function.Function;
 public class ModelCluster implements Closeable {
 
     public final VertArrays uploadedOpaqueParts;
-    public final RawModel opaqueParts;
+    public RawModel opaqueParts;
     public final VertArrays uploadedTranslucentParts;
     public final RawModel translucentParts;
+
+    private boolean opaqueRawFreed = false;
 
     private final Model uploadedOpaqueModel;
     private final Model uploadedTranslucentModel;
@@ -89,6 +91,8 @@ public class ModelCluster implements Closeable {
     }
 
     public void enqueueOpaqueBlaze(BufferSourceProxy vertexConsumers, Matrix4f pose, int light, DrawContext drawContext) {
+        // CPU 副本已释放时无法走顶点缓冲通道，直接跳过（此时本应处于快速渲染通道）
+        if (opaqueRawFreed) return;
         opaqueParts.writeBlazeBuffer(vertexConsumers, pose, light, drawContext);
     }
 
@@ -112,6 +116,23 @@ public class ModelCluster implements Closeable {
         uploadedTranslucentParts.setMatixProcess(matrixProcess);
     }
 
+    /** 该模型簇的不透明 CPU 副本是否已被释放。 */
+    public boolean isOpaqueRawFreed() {
+        return opaqueRawFreed;
+    }
+
+    /**
+     * 释放不透明部分的 CPU 侧几何数据（顶点、面），只保留 GPU 缓冲。
+     * <p>
+     * 释放后快速渲染通道照常工作；顶点缓冲通道（光影兼容模式）与重贴图会失效，
+     * 因此只在 {@code useRenderOptimization()} 为真时调用。
+     */
+    public void freeOpaqueRawParts() {
+        if (opaqueRawFreed) return;
+        opaqueRawFreed = true;
+        opaqueParts = new RawModel();
+    }
+
     @Override
     public void close() {
         uploadedOpaqueParts.close();
@@ -121,14 +142,14 @@ public class ModelCluster implements Closeable {
 
     public void replaceTexture(String oldTexture, ResourceLocation newTexture) {
         uploadedOpaqueParts.replaceTexture(oldTexture, newTexture);
-        opaqueParts.replaceTexture(oldTexture, newTexture);
+        if (!opaqueRawFreed) opaqueParts.replaceTexture(oldTexture, newTexture);
         uploadedTranslucentParts.replaceTexture(oldTexture, newTexture);
         translucentParts.replaceTexture(oldTexture, newTexture);
     }
 
     public void replaceAllTexture(ResourceLocation newTexture) {
         uploadedOpaqueParts.replaceAllTexture(newTexture);
-        opaqueParts.replaceAllTexture(newTexture);
+        if (!opaqueRawFreed) opaqueParts.replaceAllTexture(newTexture);
         uploadedTranslucentParts.replaceAllTexture(newTexture);
         translucentParts.replaceAllTexture(newTexture);
     }
@@ -136,7 +157,7 @@ public class ModelCluster implements Closeable {
     public ModelCluster copyForMaterialChanges() {
         return new ModelCluster(
                 uploadedOpaqueParts.copyForMaterialChanges(),
-                opaqueParts.copyForMaterialChanges(),
+                opaqueRawFreed ? new RawModel() : opaqueParts.copyForMaterialChanges(),
                 uploadedTranslucentParts.copyForMaterialChanges(),
                 translucentParts.copyForMaterialChanges()
         );

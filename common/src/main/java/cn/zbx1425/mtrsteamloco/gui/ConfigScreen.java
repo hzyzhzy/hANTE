@@ -50,6 +50,21 @@ public final class ConfigScreen {
         );
         experimental.addEntry(entryBuilder
                 .startBooleanToggle(
+                        Text.translatable("gui.mtrsteamloco.config.client.slim_model_memory"),
+                        ClientConfig.experimentalSlimModelMemory
+                ).setTooltip(
+                        Text.translatable("gui.mtrsteamloco.config.client.slim_model_memory.description")
+                ).setSaveConsumer(checked -> {
+                    boolean needReload = ClientConfig.experimentalSlimModelMemory != checked;
+                    ClientConfig.experimentalSlimModelMemory = checked;
+                    if (needReload) {
+                        ClientConfig.save();
+                        Minecraft.getInstance().execute(() -> Minecraft.getInstance().reloadResourcePacks());
+                    }
+                }).setDefaultValue(false).build()
+        );
+        experimental.addEntry(entryBuilder
+                .startBooleanToggle(
                         Text.translatable("gui.mtrsteamloco.config.client.lazy_train_models"),
                         ClientConfig.experimentalLazyTrainModels
                 ).setTooltip(
@@ -209,7 +224,15 @@ public final class ConfigScreen {
                 .startBooleanToggle(
                         Text.translatable("gui.mtrsteamloco.config.client.shadercompat"),
                         ClientConfig.enableOptimization
-                ).setSaveConsumer(checked -> ClientConfig.enableOptimization = checked).setDefaultValue(true).build()
+                ).setSaveConsumer(checked -> {
+                    boolean needReload = ClientConfig.enableOptimization != checked;
+                    ClientConfig.enableOptimization = checked;
+                    // 切换渲染通道后，被「模型内存精简」释放的 CPU 几何需要重新解析
+                    if (needReload && ClientConfig.experimentalSlimModelMemory) {
+                        ClientConfig.save();
+                        Minecraft.getInstance().execute(() -> Minecraft.getInstance().reloadResourcePacks());
+                    }
+                }).setDefaultValue(true).build()
         );
         common.addEntry(entryBuilder
                 .startBooleanToggle(
