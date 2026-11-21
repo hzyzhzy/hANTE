@@ -96,8 +96,20 @@ public abstract class RailChunkBase implements Closeable {
      * 直接用宿主 viewMatrix），只在不带光影时启用精度路径。
      */
     public static boolean usePreciseGeometry() {
-        return cn.zbx1425.mtrsteamloco.ClientConfig.precisionFix
-                && !cn.zbx1425.mtrsteamloco.render.ShadersModHandler.canUseCustomShader();
+        if (!cn.zbx1425.mtrsteamloco.ClientConfig.precisionFix) return false;
+        try {
+            // 宿主（如 YMTR 3.6.4）已经把相机平移从 pose stack 里去掉、自己在 double 下减相机坐标，
+            // 这时再叠加我们的「区块相对 + 相机相对」会重复处理，轨道会被推到视野外（表现为整片消失）。
+            if (!cn.zbx1425.mtrsteamloco.render.RenderSpace.isHostCameraBakedIn()) return false;
+            if (!cn.zbx1425.mtrsteamloco.render.ShadersModHandler.canUseCustomShader()) {
+                // 光影生效：默认回退（0），1/2 为实验性强制启用，供对比矩阵约定
+                return cn.zbx1425.mtrsteamloco.ClientConfig.shaderPreciseMode > 0;
+            }
+            return true;
+        } catch (Throwable t) {
+            // 判定用到的状态还拿不到时退回老路径，宁可少优化也不要画错位置
+            return false;
+        }
     }
 
     /**
@@ -194,6 +206,17 @@ public abstract class RailChunkBase implements Closeable {
         vals[14] = (float)(vals[2] * relX + vals[6] * relY + vals[10] * relZ);
         buf.position(0);
         liveMatrix.load(buf);
+    }
+
+    /**
+     * 精度路径下用于拼装区块矩阵的「基底视图矩阵」。
+     * 模式 2 会去掉相机旋转，只保留平移，用于对比光影下的矩阵约定。
+     */
+    public static Matrix4f preciseBaseView(Matrix4f viewMatrix) {
+        if (cn.zbx1425.mtrsteamloco.ClientConfig.shaderPreciseMode == 2) {
+            return withoutTranslation(viewMatrix);
+        }
+        return viewMatrix;
     }
 
     /** 去掉矩阵的平移部分，只保留旋转/缩放。 */

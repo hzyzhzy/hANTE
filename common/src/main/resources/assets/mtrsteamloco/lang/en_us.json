@@ -183,5 +183,14 @@
     "gui.mtrsteamloco.config.client.category.experimental": "Experimental",
     "gui.mtrsteamloco.config.client.category.view": "View",
     "gui.mtrsteamloco.config.client.slim_model_memory": "Experimental: Slim model memory",
-    "gui.mtrsteamloco.config.client.slim_model_memory.description": "After a model is uploaded to the GPU, drop the CPU-side vertex and face data of its opaque parts. This noticeably lowers heap usage with large addon packs. Translucent parts and the copies needed by shader-compat mode are kept, and switching render mode reloads resources automatically."
+    "gui.mtrsteamloco.config.client.slim_model_memory.description": "After a model is uploaded to the GPU, drop the CPU-side vertex and face data of its opaque parts. Experimental: the actual benefit varies between modpacks and may be negligible in some setups. Off by default. Translucent parts and the copies needed by shader-compat mode are kept, and switching render mode or this toggle reloads resources automatically.",
+    "gui.mtrsteamloco.brush_edit_rail.free_node": "Free node offsets (blocks)",
+    "gui.mtrsteamloco.brush_edit_rail.node_start_x": "Start X",
+    "gui.mtrsteamloco.brush_edit_rail.node_start_y": "Start Y",
+    "gui.mtrsteamloco.brush_edit_rail.node_start_z": "Start Z",
+    "gui.mtrsteamloco.brush_edit_rail.node_end_x": "End X",
+    "gui.mtrsteamloco.brush_edit_rail.node_end_y": "End Y",
+    "gui.mtrsteamloco.brush_edit_rail.node_end_z": "End Z",
+    "gui.mtrsteamloco.config.client.shader_precise_mode": "Experimental: Rail precision mode under shaders",
+    "gui.mtrsteamloco.config.client.shader_precise_mode.tooltip": "0 = auto (falls back when a shader pack is active, safest); 1 = force on, matrix keeps camera rotation; 2 = force on, matrix drops camera rotation. 1 and 2 are opposite conventions, used to find out which one is correct under shaders. Switching rebuilds rail geometry."
 }

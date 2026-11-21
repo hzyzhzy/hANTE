@@ -29,14 +29,19 @@ public final class ShadersModHandler {
     }
 
     public static boolean canUseCustomShader() {
+        // init() 之前 internalHandler 还是 null（客户端 setup 阶段就会有人来问），
+        // 此时按「没有启用的光影包」处理，与默认 InternalHandler 的语义一致。
+        if (internalHandler == null) return !ContextCapability.isGL4ES;
         return !internalHandler.isShaderPackInUse() && !ContextCapability.isGL4ES;
     }
 
     public static boolean canDrawWithBuffer() {
+        if (internalHandler == null) return true;
         return !(internalHandler instanceof Optifine) || canUseCustomShader();
     }
 
     public static boolean isRenderingShadowPass() {
+        if (internalHandler == null) return false;
         return internalHandler.isRenderingShadowPass();
     }
 

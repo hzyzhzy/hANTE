@@ -132,5 +132,14 @@
     "gui.mtrsteamloco.config.client.category.experimental": "實驗性",
     "gui.mtrsteamloco.config.client.category.view": "視角",
     "gui.mtrsteamloco.config.client.slim_model_memory": "實驗性：模型記憶體精簡",
-    "gui.mtrsteamloco.config.client.slim_model_memory.description": "模型上傳到 GPU 後，釋放不透明部分的 CPU 側頂點與面資料，顯著降低大型整合包的記憶體佔用。半透明部分與光影相容模式所需的副本會保留；切換渲染模式時會自動重新載入資源。"
+    "gui.mtrsteamloco.config.client.slim_model_memory.description": "模型上傳到 GPU 後，釋放不透明部分的 CPU 側頂點與面資料。屬實驗性質，實際收益因整合包而異，部分情況下幾乎沒有作用。預設關閉。半透明部分與光影相容模式所需的副本會保留；切換渲染模式或該開關時會自動重新載入資源。",
+    "gui.mtrsteamloco.brush_edit_rail.free_node": "自由節點偏移（格）",
+    "gui.mtrsteamloco.brush_edit_rail.node_start_x": "起點 X",
+    "gui.mtrsteamloco.brush_edit_rail.node_start_y": "起點 Y",
+    "gui.mtrsteamloco.brush_edit_rail.node_start_z": "起點 Z",
+    "gui.mtrsteamloco.brush_edit_rail.node_end_x": "終點 X",
+    "gui.mtrsteamloco.brush_edit_rail.node_end_y": "終點 Y",
+    "gui.mtrsteamloco.brush_edit_rail.node_end_z": "終點 Z",
+    "gui.mtrsteamloco.config.client.shader_precise_mode": "實驗性：光影下的軌道精度模式",
+    "gui.mtrsteamloco.config.client.shader_precise_mode.tooltip": "0 = 自動（光影生效時回退，最穩）；1 = 強制啟用，矩陣保留相機旋轉；2 = 強制啟用，矩陣去掉相機旋轉。1 和 2 是兩種相反的矩陣約定，用來找出光影下正確的那個。切換會重建軌道幾何。"
 }

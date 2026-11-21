@@ -90,7 +90,7 @@ public class MeshBuildingRailChunk extends RailChunkBase {
             // 顶点是区块相对坐标，模型矩阵只需补上「本区块相对相机」的位移
             Vec3 cameraPos = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
             Vec3 chunkOrigin = getChunkOrigin();
-            modelMatrix = RailChunkBase.cameraRelativeMatrix(shaderProp.viewMatrix,
+            modelMatrix = RailChunkBase.cameraRelativeMatrix(RailChunkBase.preciseBaseView(shaderProp.viewMatrix),
                     chunkOrigin.x - cameraPos.x, chunkOrigin.y - cameraPos.y, chunkOrigin.z - cameraPos.z);
         } else {
             modelMatrix = shaderProp.viewMatrix;

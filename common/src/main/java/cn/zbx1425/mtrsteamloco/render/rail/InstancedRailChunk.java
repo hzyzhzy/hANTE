@@ -125,7 +125,7 @@ public class InstancedRailChunk extends RailChunkBase {
             // 实例矩阵是区块相对坐标，父矩阵补上「本区块相对相机」的位移
             Vec3 cameraPos = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
             Vec3 chunkOrigin = getChunkOrigin();
-            Matrix4f chunkMatrix = RailChunkBase.cameraRelativeMatrix(shaderProp.viewMatrix,
+            Matrix4f chunkMatrix = RailChunkBase.cameraRelativeMatrix(RailChunkBase.preciseBaseView(shaderProp.viewMatrix),
                     chunkOrigin.x - cameraPos.x, chunkOrigin.y - cameraPos.y, chunkOrigin.z - cameraPos.z);
             batchManager.enqueue(vertArrays, new EnqueueProp(attrState), new ShaderProp().setViewMatrix(chunkMatrix));
         } else {

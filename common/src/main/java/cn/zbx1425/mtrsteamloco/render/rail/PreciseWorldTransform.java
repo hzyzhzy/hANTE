@@ -40,6 +40,16 @@ public final class PreciseWorldTransform {
     public static boolean consume() {
         if (!ClientConfig.precisionFix || !ClientConfig.mixinMtrPrecision) return false;
         if (!ACTIVE.get() || CONSUMED.get()) return false;
+        // ★ 光影生效时必须停手：光影下 MODEL_VIEW 里已经带了完整相机变换（含原版视角晃动），
+        //   我们再把世界坐标的平移改写成相机相对坐标，就会变成减两次，
+        //   表现为「所有方块实体的模型跟着视角晃动」——闸机、指示牌元素、轨道节点全都中招。
+        //   宿主自己已经修好距离现象时同理（它会自己减）。
+        try {
+            if (!cn.zbx1425.mtrsteamloco.render.ShadersModHandler.canUseCustomShader()) return false;
+            if (!cn.zbx1425.mtrsteamloco.render.RenderSpace.isHostCameraBakedIn()) return false;
+        } catch (Throwable t) {
+            return false;
+        }
         CONSUMED.set(true);
         return true;
     }

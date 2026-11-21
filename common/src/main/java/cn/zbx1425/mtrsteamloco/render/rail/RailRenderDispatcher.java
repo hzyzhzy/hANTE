@@ -139,8 +139,12 @@ public class RailRenderDispatcher {
         }
     }
 
-    /** 上一次分帧时的精度模式；光影开关切换后需要重新烘焙几何。 */
-    private boolean lastPreciseMode = RailChunkBase.usePreciseGeometry();
+    /**
+     * 上一次分帧时的精度模式；光影开关切换后需要重新烘焙几何。
+     * 用 null 表示「还没判定过」——不能在字段初始化时就去问 ShadersModHandler，
+     * 那时它尚未 init()，会直接抛 NPE 导致模组加载失败。
+     */
+    private Boolean lastPreciseMode = null;
 
     public void drawRails(Level level, DrawScheduler drawScheduler, Matrix4f viewMatrix) {
         BatchManager batchManager = drawScheduler.batchManager;
@@ -148,7 +152,9 @@ public class RailRenderDispatcher {
         // 光影生效与否会改变几何的烘焙坐标系（见 RailChunkBase.usePreciseGeometry），
         // 模式一变就整批重建，避免用旧的坐标系继续画。
         boolean preciseNow = RailChunkBase.usePreciseGeometry();
-        if (preciseNow != lastPreciseMode) {
+        if (lastPreciseMode == null) {
+            lastPreciseMode = preciseNow;
+        } else if (preciseNow != lastPreciseMode) {
             lastPreciseMode = preciseNow;
             clearRail();
             currentFrameRails.clear();

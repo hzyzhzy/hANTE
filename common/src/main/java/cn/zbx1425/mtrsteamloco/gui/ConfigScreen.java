@@ -64,6 +64,21 @@ public final class ConfigScreen {
                 }).setDefaultValue(false).build()
         );
         experimental.addEntry(entryBuilder
+                .startIntSlider(
+                        Text.translatable("gui.mtrsteamloco.config.client.shader_precise_mode"),
+                        ClientConfig.shaderPreciseMode, 0, 2
+                ).setTooltip(Text.translatable("gui.mtrsteamloco.config.client.shader_precise_mode.tooltip"))
+                .setSaveConsumer(value -> {
+                    boolean needReload = ClientConfig.shaderPreciseMode != value;
+                    ClientConfig.shaderPreciseMode = value;
+                    if (needReload) {
+                        ClientConfig.save();
+                        cn.zbx1425.mtrsteamloco.MainClient.railRenderDispatcher.clearRail();
+                        Minecraft.getInstance().levelRenderer.allChanged();
+                    }
+                }).setDefaultValue(0).build()
+        );
+        experimental.addEntry(entryBuilder
                 .startBooleanToggle(
                         Text.translatable("gui.mtrsteamloco.config.client.lazy_train_models"),
                         ClientConfig.experimentalLazyTrainModels

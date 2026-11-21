@@ -56,6 +56,15 @@ public class ClientConfig {
      * 半透明部分保留（排序要用）；光影兼容模式下自动失效，切换时会重新加载资源。
      */
     public static boolean experimentalSlimModelMemory = false;
+    /**
+     * 光影下是否仍然启用「区块相对 + 相机相对」的轨道精度路径（实验性）。
+     * <ul>
+     *   <li>0 = 自动（光影生效时回退到 1.1.5 的世界坐标路径，最稳）</li>
+     *   <li>1 = 强行启用，矩阵保留相机旋转（实测与 2 无差别，保留仅作排查用）</li>
+     *   <li>2 = 强行启用，矩阵去掉相机旋转（实测与 1 无差别，保留仅作排查用）</li>
+     * </ul>
+     */
+    public static int shaderPreciseMode = 0;
     public static boolean enableBbModelPreload = false;
     public static boolean experimentalLazyTrainModels = false;
     public static boolean experimentalLazyEyeCandyModels = false;
@@ -111,6 +120,7 @@ public class ClientConfig {
             precisionFix = getOrDefault(configObject, "precisionFix", JsonElement::getAsBoolean, true);
             mixinMtrPrecision = getOrDefault(configObject, "mixinMtrPrecision", JsonElement::getAsBoolean, false);
             experimentalSlimModelMemory = getOrDefault(configObject, "experimentalSlimModelMemory", JsonElement::getAsBoolean, false);
+            shaderPreciseMode = getOrDefault(configObject, "shaderPreciseMode", JsonElement::getAsInt, 0);
             enableBbModelPreload = getOrDefault(configObject, "enableBbModelPreload", JsonElement::getAsBoolean, false);
             experimentalLazyTrainModels = getOrDefault(configObject, "experimentalLazyTrainModels", JsonElement::getAsBoolean, false);
             experimentalLazyEyeCandyModels = getOrDefault(configObject, "experimentalLazyEyeCandyModels", JsonElement::getAsBoolean, false);
@@ -191,6 +201,7 @@ public class ClientConfig {
             configObject.addProperty("precisionFix", precisionFix);
             configObject.addProperty("mixinMtrPrecision", mixinMtrPrecision);
             configObject.addProperty("experimentalSlimModelMemory", experimentalSlimModelMemory);
+            configObject.addProperty("shaderPreciseMode", shaderPreciseMode);
             configObject.addProperty("enableBbModelPreload", enableBbModelPreload);
             configObject.addProperty("experimentalLazyTrainModels", experimentalLazyTrainModels);
             configObject.addProperty("experimentalLazyEyeCandyModels", experimentalLazyEyeCandyModels);
