@@ -50,9 +50,8 @@ public class BakedRail {
                 float roll = RailExtraSupplier.getRollAngle(rail, i - interval / 2);
                 // 关键：矩阵里只存「区块相对坐标」，不要把世界坐标塞进 float。
                 // 远处坐标（百万级以上）下 float 精度不足以区分相邻轨道片，会抖动甚至消失。
-                // 光影下退回世界坐标烘焙（见 RailChunkBase.usePreciseGeometry）。
                 final Vec3 bakePos;
-                if (RailChunkBase.usePreciseGeometry()) {
+                if (ClientConfig.precisionFix) {
                     Vec3 chunkOrigin = new Vec3((int) mid.x & ~31, 0, (int) mid.z & ~31);
                     bakePos = mid.subtract(chunkOrigin);
                 } else {

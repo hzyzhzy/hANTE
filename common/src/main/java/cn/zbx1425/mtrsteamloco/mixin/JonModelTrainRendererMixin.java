@@ -68,6 +68,16 @@ public abstract class JonModelTrainRendererMixin extends TrainRendererBase{
             return;
         }
         try {
+            // 阴影 pass 用光源视角矩阵，不能掺相机坐标，否则列车影子会随视角抖
+            try {
+                if (cn.zbx1425.mtrsteamloco.render.ShadersModHandler.isRenderingShadowPass()) {
+                    poseStack.translate(x, y, z);
+                    return;
+                }
+            } catch (Throwable ignored) {
+                poseStack.translate(x, y, z);
+                return;
+            }
             Vec3 cam = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
             RailChunkBase.setCameraRelativeTranslation(new Matrix4f(poseStack.last().pose()),
                     x - cam.x, y - cam.y, z - cam.z);
@@ -91,6 +101,16 @@ public abstract class JonModelTrainRendererMixin extends TrainRendererBase{
             return;
         }
         try {
+            // 阴影 pass 用光源视角矩阵，不能掺相机坐标，否则列车影子会随视角抖
+            try {
+                if (cn.zbx1425.mtrsteamloco.render.ShadersModHandler.isRenderingShadowPass()) {
+                    poseStack.translate(x, y, z);
+                    return;
+                }
+            } catch (Throwable ignored) {
+                poseStack.translate(x, y, z);
+                return;
+            }
             Vec3 cam = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
             RailChunkBase.setCameraRelativeTranslation(new Matrix4f(poseStack.last().pose()),
                     x - cam.x, y - cam.y, z - cam.z);

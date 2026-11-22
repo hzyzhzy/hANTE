@@ -89,30 +89,6 @@ public abstract class RailChunkBase implements Closeable {
     }
 
     /**
-     * 当前是否使用「区块相对几何 + 相机相对矩阵」这套精度路径。
-     * <p>
-     * 光影（Iris/Oculus）下 MODEL_VIEW 里已经带了相机旋转，模型矩阵再带一次就会
-     * 出现「轨道随视角转动」；因此光影生效时退回 1.1.5 的写法（世界坐标烘焙 +
-     * 直接用宿主 viewMatrix），只在不带光影时启用精度路径。
-     */
-    public static boolean usePreciseGeometry() {
-        if (!cn.zbx1425.mtrsteamloco.ClientConfig.precisionFix) return false;
-        try {
-            // 宿主（如 YMTR 3.6.4）已经把相机平移从 pose stack 里去掉、自己在 double 下减相机坐标，
-            // 这时再叠加我们的「区块相对 + 相机相对」会重复处理，轨道会被推到视野外（表现为整片消失）。
-            if (!cn.zbx1425.mtrsteamloco.render.RenderSpace.isHostCameraBakedIn()) return false;
-            if (!cn.zbx1425.mtrsteamloco.render.ShadersModHandler.canUseCustomShader()) {
-                // 光影生效：默认回退（0），1/2 为实验性强制启用，供对比矩阵约定
-                return cn.zbx1425.mtrsteamloco.ClientConfig.shaderPreciseMode > 0;
-            }
-            return true;
-        } catch (Throwable t) {
-            // 判定用到的状态还拿不到时退回老路径，宁可少优化也不要画错位置
-            return false;
-        }
-    }
-
-    /**
      * 该区块在**世界坐标**中的原点（X/Z 对齐到区块，Y 固定为 0）。
      * <p>
      * 轨道几何现在一律以「区块相对坐标」烘焙：顶点与实例矩阵里只保存 0~32 范围的
@@ -209,14 +185,24 @@ public abstract class RailChunkBase implements Closeable {
     }
 
     /**
-     * 精度路径下用于拼装区块矩阵的「基底视图矩阵」。
-     * 模式 2 会去掉相机旋转，只保留平移，用于对比光影下的矩阵约定。
+     * 轨道 chunk 的模型矩阵。
+     * <p>
+     * 阴影 pass 用的是光源视角矩阵，此时绝不能掺相机坐标，否则影子会随玩家移动抖动；
+     * 顶点本身是区块相对坐标，所以只需补上区块原点的世界位移。
      */
-    public static Matrix4f preciseBaseView(Matrix4f viewMatrix) {
-        if (cn.zbx1425.mtrsteamloco.ClientConfig.shaderPreciseMode == 2) {
-            return withoutTranslation(viewMatrix);
+    public static Matrix4f chunkViewMatrix(Matrix4f viewMatrix, Vec3 chunkOrigin, Vec3 cameraPos) {
+        boolean shadow = false;
+        try {
+            shadow = cn.zbx1425.mtrsteamloco.render.ShadersModHandler.isRenderingShadowPass();
+        } catch (Throwable ignored) {
         }
-        return viewMatrix;
+        if (shadow) {
+            Matrix4f m = viewMatrix.copy();
+            m.translate((float) chunkOrigin.x, (float) chunkOrigin.y, (float) chunkOrigin.z);
+            return m;
+        }
+        return cameraRelativeMatrix(viewMatrix,
+                chunkOrigin.x - cameraPos.x, chunkOrigin.y - cameraPos.y, chunkOrigin.z - cameraPos.z);
     }
 
     /** 去掉矩阵的平移部分，只保留旋转/缩放。 */

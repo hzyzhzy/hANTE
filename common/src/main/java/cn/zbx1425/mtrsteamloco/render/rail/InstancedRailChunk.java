@@ -69,7 +69,7 @@ public class InstancedRailChunk extends RailChunkBase {
         if (vertArrays == null) return;
 
         // 实例矩阵里只存区块相对坐标，取光照时加回区块原点换回世界坐标
-        final boolean precise = RailChunkBase.usePreciseGeometry();
+        final boolean precise = ClientConfig.precisionFix;
         Vec3 chunkOrigin = getChunkOrigin();
         int instanceCount = containingRails.values().stream().mapToInt(ArrayList::size).sum();
         float yMin = 256, yMax = -64;
@@ -121,12 +121,11 @@ public class InstancedRailChunk extends RailChunkBase {
         if (instanceBuf.size < 1) return;
         VertAttrState attrState = new VertAttrState().setOverlayUVNoOverlay();
         if (!RailRenderDispatcher.isHoldingRailItem) attrState.setColor(-1);
-        if (RailChunkBase.usePreciseGeometry()) {
+        if (ClientConfig.precisionFix) {
             // 实例矩阵是区块相对坐标，父矩阵补上「本区块相对相机」的位移
             Vec3 cameraPos = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
             Vec3 chunkOrigin = getChunkOrigin();
-            Matrix4f chunkMatrix = RailChunkBase.cameraRelativeMatrix(RailChunkBase.preciseBaseView(shaderProp.viewMatrix),
-                    chunkOrigin.x - cameraPos.x, chunkOrigin.y - cameraPos.y, chunkOrigin.z - cameraPos.z);
+            Matrix4f chunkMatrix = RailChunkBase.chunkViewMatrix(shaderProp.viewMatrix, chunkOrigin, cameraPos);
             batchManager.enqueue(vertArrays, new EnqueueProp(attrState), new ShaderProp().setViewMatrix(chunkMatrix));
         } else {
             batchManager.enqueue(vertArrays, new EnqueueProp(attrState), shaderProp);

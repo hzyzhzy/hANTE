@@ -48,36 +48,9 @@ public final class ConfigScreen {
                         Text.translatable("gui.mtrsteamloco.config.client.experimental_features")
                 ).build()
         );
-        experimental.addEntry(entryBuilder
-                .startBooleanToggle(
-                        Text.translatable("gui.mtrsteamloco.config.client.slim_model_memory"),
-                        ClientConfig.experimentalSlimModelMemory
-                ).setTooltip(
-                        Text.translatable("gui.mtrsteamloco.config.client.slim_model_memory.description")
-                ).setSaveConsumer(checked -> {
-                    boolean needReload = ClientConfig.experimentalSlimModelMemory != checked;
-                    ClientConfig.experimentalSlimModelMemory = checked;
-                    if (needReload) {
-                        ClientConfig.save();
-                        Minecraft.getInstance().execute(() -> Minecraft.getInstance().reloadResourcePacks());
-                    }
-                }).setDefaultValue(false).build()
-        );
-        experimental.addEntry(entryBuilder
-                .startIntSlider(
-                        Text.translatable("gui.mtrsteamloco.config.client.shader_precise_mode"),
-                        ClientConfig.shaderPreciseMode, 0, 2
-                ).setTooltip(Text.translatable("gui.mtrsteamloco.config.client.shader_precise_mode.tooltip"))
-                .setSaveConsumer(value -> {
-                    boolean needReload = ClientConfig.shaderPreciseMode != value;
-                    ClientConfig.shaderPreciseMode = value;
-                    if (needReload) {
-                        ClientConfig.save();
-                        cn.zbx1425.mtrsteamloco.MainClient.railRenderDispatcher.clearRail();
-                        Minecraft.getInstance().levelRenderer.allChanged();
-                    }
-                }).setDefaultValue(0).build()
-        );
+        experimental.addEntry(entryBuilder.startTextDescription(
+                Text.translatable("gui.mtrsteamloco.config.client.category.experimental.memory")
+        ).build());
         experimental.addEntry(entryBuilder
                 .startBooleanToggle(
                         Text.translatable("gui.mtrsteamloco.config.client.lazy_train_models"),
@@ -152,6 +125,9 @@ public final class ConfigScreen {
                         Math.round(ClientConfig.cameraInertiaDamping * 100.0f), 5, 95
                 ).setSaveConsumer(value -> ClientConfig.cameraInertiaDamping = value / 100.0f).setDefaultValue(20).build()
         );
+        experimental.addEntry(entryBuilder.startTextDescription(
+                Text.translatable("gui.mtrsteamloco.config.client.category.experimental.distance")
+        ).build());
         experimental.addEntry(entryBuilder
                 .startBooleanToggle(
                         Text.translatable("gui.mtrsteamloco.config.client.precisionfix"),
@@ -239,15 +215,7 @@ public final class ConfigScreen {
                 .startBooleanToggle(
                         Text.translatable("gui.mtrsteamloco.config.client.shadercompat"),
                         ClientConfig.enableOptimization
-                ).setSaveConsumer(checked -> {
-                    boolean needReload = ClientConfig.enableOptimization != checked;
-                    ClientConfig.enableOptimization = checked;
-                    // 切换渲染通道后，被「模型内存精简」释放的 CPU 几何需要重新解析
-                    if (needReload && ClientConfig.experimentalSlimModelMemory) {
-                        ClientConfig.save();
-                        Minecraft.getInstance().execute(() -> Minecraft.getInstance().reloadResourcePacks());
-                    }
-                }).setDefaultValue(true).build()
+                ).setSaveConsumer(checked -> ClientConfig.enableOptimization = checked).setDefaultValue(true).build()
         );
         common.addEntry(entryBuilder
                 .startBooleanToggle(

@@ -101,6 +101,9 @@ public class RenderTrainsMixin implements IGui{
             Rolling.update();
         }
 
+        // 光影 + 修复远坐标抖动时会临时关闭原版视角晃动（见 ViewBobbingGuard）
+        cn.zbx1425.mtrsteamloco.render.ViewBobbingGuard.tick();
+
         Minecraft.getInstance().level.getProfiler().popPush("NTERailwayData");
         Matrix4f viewMatrix = new Matrix4f(matrices.last().pose());
         // 探测宿主 pose stack 是否仍烘焙了相机平移（YMTR 的「距离现象修复」把它去掉了），

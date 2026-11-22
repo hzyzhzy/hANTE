@@ -139,27 +139,8 @@ public class RailRenderDispatcher {
         }
     }
 
-    /**
-     * 上一次分帧时的精度模式；光影开关切换后需要重新烘焙几何。
-     * 用 null 表示「还没判定过」——不能在字段初始化时就去问 ShadersModHandler，
-     * 那时它尚未 init()，会直接抛 NPE 导致模组加载失败。
-     */
-    private Boolean lastPreciseMode = null;
-
     public void drawRails(Level level, DrawScheduler drawScheduler, Matrix4f viewMatrix) {
         BatchManager batchManager = drawScheduler.batchManager;
-
-        // 光影生效与否会改变几何的烘焙坐标系（见 RailChunkBase.usePreciseGeometry），
-        // 模式一变就整批重建，避免用旧的坐标系继续画。
-        boolean preciseNow = RailChunkBase.usePreciseGeometry();
-        if (lastPreciseMode == null) {
-            lastPreciseMode = preciseNow;
-        } else if (preciseNow != lastPreciseMode) {
-            lastPreciseMode = preciseNow;
-            clearRail();
-            currentFrameRails.clear();
-            return;
-        }
         boolean shouldBeInstanced = ClientConfig.getRailRenderLevel() == 3;
         if (isInstanced != shouldBeInstanced) clearRail();
         isInstanced = shouldBeInstanced;
@@ -224,6 +205,11 @@ public class RailRenderDispatcher {
     }
 
     public void drawRailNodes(Level level, DrawScheduler drawScheduler, Matrix4f viewMatrix) {
+        // 阴影 pass 用光源视角矩阵，节点按相机坐标定位会让影子跟着视角抖，直接跳过
+        try {
+            if (cn.zbx1425.mtrsteamloco.render.ShadersModHandler.isRenderingShadowPass()) return;
+        } catch (Throwable ignored) {
+        }
         if (isHoldingRailItemOrBrush) {
             // 节点用世界坐标定位，先在 double 下换成相机相对位移再写进矩阵，
             // 否则 float 在远处会把平移列的数量级差吃掉，节点会错位

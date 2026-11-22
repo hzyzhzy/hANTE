@@ -113,18 +113,7 @@ ATP 默认开启；超过 ATP 红针会触发紧急制动。需要完全手动�
 
 ## 版本
 
-当前版本：**1.1.7**（未发布），基线为上游 `alpha` 的 `0506691f`。
-
-### 1.1.7 主要变更
-
-- 修复 1.1.6 的回归：光影生效时 `MODEL_VIEW` 已含相机旋转，模型矩阵再带一次会导致
-  轨道跟随视角转动；现在检测到光影会回退到 1.1.5 的坐标系；
-- 修复光影下**方块实体**（闸机、指示牌、轨道节点、屏蔽门等）跟随视角晃动的问题：
-  精确改写仅在「无光影 + 宿主未修距离现象」时生效；
-- 修复早期构建在客户端 setup 阶段因 `ShadersModHandler` 未初始化而崩溃的问题；
-- 新增实验性开关「模型内存精简」（默认关闭）：模型上传 GPU 后释放不透明部分的 CPU 侧几何。
-  属实验性质，实际收益因整合包而异；
-- 新增实验性开关「光影下的轨道精度模式」（0/1/2，默认 0 = 自动回退），仅用于排查矩阵约定。
+当前版本：**1.1.6**（预发布），基线为上游 `alpha` 的 `0506691f`。
 
 ### 1.1.6 主要变更
 
@@ -331,23 +320,7 @@ that never enters view occupies no model memory at all.
 
 ## Version
 
-Current version: **1.1.7** (unreleased), based on upstream `alpha` at `0506691f`.
-
-### 1.1.7 highlights
-
-- Fixed a 1.1.6 regression: with shaders active, `MODEL_VIEW` already contains the camera
-  rotation, so passing it again in the model matrix made rails rotate with the view. The
-  renderer now falls back to the 1.1.5 coordinate space when a shader pack is in use;
-- fixed **block entities** (gates, signs, rail nodes, platform screen doors) shimmering with
-  the view under shaders: the precise rewrite now only applies with no shader pack and on a
-  host that has not fixed the distance phenomenon itself;
-- fixed a crash in early builds where `ShadersModHandler` was used before being initialised
-  during client setup;
-- added an experimental toggle "Slim model memory" (off by default): after a model is
-  uploaded to the GPU, its CPU-side opaque geometry is released. Experimental; the actual
-  benefit varies between modpacks;
-- added an experimental toggle "Rail precision mode under shaders" (0/1/2, default 0 = auto
-  fallback), intended only for diagnosing matrix conventions.
+Current version: **1.1.6** (pre-release), based on upstream `alpha` at `0506691f`.
 
 ### 1.1.6 highlights
 

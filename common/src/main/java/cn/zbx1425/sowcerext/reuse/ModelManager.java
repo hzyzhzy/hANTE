@@ -1,6 +1,5 @@
 package cn.zbx1425.sowcerext.reuse;
 
-import cn.zbx1425.mtrsteamloco.ClientConfig;
 import cn.zbx1425.sowcer.model.Model;
 import cn.zbx1425.sowcer.model.VertArrays;
 import cn.zbx1425.sowcer.vertex.VertAttrMapping;
@@ -151,30 +150,14 @@ public class ModelManager {
             ModelCluster result = new ModelCluster(rawModel, DEFAULT_MAPPING, this);
             vaoCount += result.uploadedOpaqueParts == null ? 0 : result.uploadedOpaqueParts.meshList.size();
             uploadedVertArrays.put(new ResourceLocation("sowcerext-anonymous:vertarrays/" + UUID.randomUUID()), result);
-            slimIfEnabled(result);
             return result;
         } else {
             if (uploadedVertArrays.containsKey(rawModel.sourceLocation)) return uploadedVertArrays.get(rawModel.sourceLocation);
             ModelCluster result = new ModelCluster(rawModel, DEFAULT_MAPPING, this);
             vaoCount += result.uploadedOpaqueParts == null ? 0 : result.uploadedOpaqueParts.meshList.size();
             uploadedVertArrays.put(rawModel.sourceLocation, result);
-            slimIfEnabled(result);
             return result;
         }
-    }
-
-    /**
-     * 实验性「模型内存精简」：上传完成后释放不透明部分的 CPU 几何。
-     * <p>
-     * 只在快速渲染通道可用时释放——该通道直接把顶点缓冲提交给 GL，
-     * 不需要 CPU 侧顶点/面；一旦玩家切到光影兼容模式（顶点缓冲通道），
-     * 切换处会触发资源重载，模型会重新解析并上传，不会被永久破坏。
-     */
-    private void slimIfEnabled(ModelCluster cluster) {
-        if (!ClientConfig.experimentalSlimModelMemory) return;
-        if (!ClientConfig.useRenderOptimization()) return;
-        if (cluster == null || cluster.isOpaqueRawFreed()) return;
-        cluster.freeOpaqueRawParts();
     }
 
 }

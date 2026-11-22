@@ -54,7 +54,7 @@ public class MeshBuildingRailChunk extends RailChunkBase {
         if (railModel == null) return;
 
         // 几何以「区块相对坐标」烘焙，取光照时要加回区块原点换回世界坐标
-        final boolean precise = RailChunkBase.usePreciseGeometry();
+        final boolean precise = ClientConfig.precisionFix;
         Vec3 chunkOrigin = getChunkOrigin();
         float yMin = 256, yMax = -64;
         RawModel combinedModel = new RawModel();
@@ -86,12 +86,11 @@ public class MeshBuildingRailChunk extends RailChunkBase {
 
         if (vertArrays == null) return;
         Matrix4f modelMatrix;
-        if (RailChunkBase.usePreciseGeometry()) {
+        if (ClientConfig.precisionFix) {
             // 顶点是区块相对坐标，模型矩阵只需补上「本区块相对相机」的位移
             Vec3 cameraPos = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
             Vec3 chunkOrigin = getChunkOrigin();
-            modelMatrix = RailChunkBase.cameraRelativeMatrix(RailChunkBase.preciseBaseView(shaderProp.viewMatrix),
-                    chunkOrigin.x - cameraPos.x, chunkOrigin.y - cameraPos.y, chunkOrigin.z - cameraPos.z);
+            modelMatrix = RailChunkBase.chunkViewMatrix(shaderProp.viewMatrix, chunkOrigin, cameraPos);
         } else {
             modelMatrix = shaderProp.viewMatrix;
         }
