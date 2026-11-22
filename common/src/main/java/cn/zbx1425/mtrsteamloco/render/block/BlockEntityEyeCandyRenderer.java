@@ -72,6 +72,12 @@ public class BlockEntityEyeCandyRenderer extends BlockEntityRendererMapper<Block
     }
 
     public static void commit(@NotNull PoseStack matrices, @NotNull MultiBufferSource vertexConsumers) {
+        // 光影的阴影 pass 用光源视角矩阵，糖眼的矩阵是「pose(-cam) × 方块世界坐标」，
+        // 在光源空间里会相消失真，影子随视角抽搐；这里直接跳过，宁可不投影。
+        try {
+            if (cn.zbx1425.mtrsteamloco.render.ShadersModHandler.isRenderingShadowPass()) return;
+        } catch (Throwable ignored) {
+        }
         // rawPose 保持宿主原样；worldPose 归一化成 R*T(-cam) 供脚本/音源使用
         Matrix4f rawPose = new Matrix4f(matrices.last().pose()).copy();
         Matrix4f worldPose = RenderSpace.normalizeView(rawPose.copy());
