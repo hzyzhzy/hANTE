@@ -124,6 +124,8 @@ ATP 默认开启；超过 ATP 红针会触发紧急制动。需要完全手动�
   玩家移动抽搐。现在这些绘制在阴影 pass 中一律使用世界坐标；
 - 新增**视角晃动守卫**：当同时开启「修复远坐标抖动」与光影时，临时关闭原版的视角晃动
   （否则轨道会随走动抽动）；任一条件解除后自动恢复玩家原本的设置。
+- 移除已废弃功能的遗留缓存：此前每列车型都会额外保存一份模型 JSON 与属性深拷贝，
+  且这些条目永不回收；现在只在懒加载期间临时持有引用，加载完即释放。
 
 ### 1.1.6 主要变更
 
@@ -343,6 +345,9 @@ Current version: **1.1.7** (pre-release), based on upstream `alpha` at `0506691f
 - added a **view-bobbing guard**: when "Fix far-coordinate jitter" and shaders are both active,
   vanilla view bobbing is temporarily disabled (otherwise rails twitch while walking); the
   player's original setting is restored as soon as either condition no longer holds.
+- removed a leftover cache from an abandoned feature: every train model used to keep an extra
+  copy of its model JSON and a deep copy of its properties, and those entries were never
+  reclaimed. The JSON is now only held while lazy loading is pending and released afterwards.
 
 ### 1.1.6 highlights
 
