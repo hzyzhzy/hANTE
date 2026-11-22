@@ -113,7 +113,17 @@ ATP 默认开启；超过 ATP 红针会触发紧急制动。需要完全手动�
 
 ## 版本
 
-当前版本：**1.1.6**（预发布），基线为上游 `alpha` 的 `0506691f`。
+当前版本：**1.1.7**（预发布），基线为上游 `alpha` 的 `0506691f`。
+
+### 1.1.7 主要变更
+
+- 配置界面：「实验性」分页内新增 **内存优化** 与 **距离现象修复** 两个分组，
+  并去掉各选项的「实验性：」前缀；
+- 修复光影下**阴影抖动**：阴影 pass 使用光源视角矩阵，此前方块实体（屏蔽门、吊板、
+  指示牌、闸机）、轨道、轨道节点、列车与装饰物件仍按相机坐标改写平移，导致影子随
+  玩家移动抽搐。现在这些绘制在阴影 pass 中一律使用世界坐标；
+- 新增**视角晃动守卫**：当同时开启「修复远坐标抖动」与光影时，临时关闭原版的视角晃动
+  （否则轨道会随走动抽动）；任一条件解除后自动恢复玩家原本的设置。
 
 ### 1.1.6 主要变更
 
@@ -320,7 +330,19 @@ that never enters view occupies no model memory at all.
 
 ## Version
 
-Current version: **1.1.6** (pre-release), based on upstream `alpha` at `0506691f`.
+Current version: **1.1.7** (pre-release), based on upstream `alpha` at `0506691f`.
+
+### 1.1.7 highlights
+
+- Config screen: the **Experimental** page now has two groups, **Memory optimisation** and
+  **Distance-phenomenon fixes**, and the `Experimental:` prefix was removed from the entries;
+- fixed **shadow jitter** with shaders: the shadow pass uses the light's view matrix, but block
+  entities (platform screen doors, hanging panels, signs, gates), rails, rail nodes, trains and
+  eye candy still rewrote their translation with camera coordinates, so their shadows twitched
+  as the player moved. Those draws now use world coordinates in the shadow pass;
+- added a **view-bobbing guard**: when "Fix far-coordinate jitter" and shaders are both active,
+  vanilla view bobbing is temporarily disabled (otherwise rails twitch while walking); the
+  player's original setting is restored as soon as either condition no longer holds.
 
 ### 1.1.6 highlights
 
